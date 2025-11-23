@@ -12,7 +12,7 @@ class CleanEnergyDataLoader:
         self.raw_data = None
         self.processed_data = None
         
-    def download_data(self, period='6mo', interval='1d', max_retries=3):
+    def download_data(self, period='3y', interval='1d', max_retries=3):
         """Download latest data from Yahoo Finance with retry logic"""
         print(f"Downloading {period} of data for {self.tickers}...")
         
