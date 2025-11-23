@@ -1,0 +1,31 @@
+MARKET MOVEMENT CLASSIFIER - Financial Services
+======================================================================
+
+Category: FINANCE
+Tickers: JPM, BAC, GS, MS
+SDG Aligned: No
+
+Training Accuracy:   1.0000
+Test Accuracy:       0.4787
+Test F1-Score:       0.4948
+Test ROC-AUC:        0.5298
+
+Confusion Matrix:
+[[21 21]
+ [28 24]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.43      0.50      0.46        42
+           1       0.53      0.46      0.49        52
+
+    accuracy                           0.48        94
+   macro avg       0.48      0.48      0.48        94
+weighted avg       0.49      0.48      0.48        94
+
+
+Next Day Prediction:
+Ticker: JPM
+Movement: DOWN
+Confidence: 60.59%

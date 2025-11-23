@@ -1,0 +1,31 @@
+MARKET MOVEMENT CLASSIFIER - Healthcare (SDG #3)
+======================================================================
+
+Category: SDG_HEALTH
+Tickers: JNJ, PFE, UNH, ABBV
+SDG Aligned: Yes
+
+Training Accuracy:   1.0000
+Test Accuracy:       0.4574
+Test F1-Score:       0.4950
+Test ROC-AUC:        0.4948
+
+Confusion Matrix:
+[[18 20]
+ [31 25]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.37      0.47      0.41        38
+           1       0.56      0.45      0.50        56
+
+    accuracy                           0.46        94
+   macro avg       0.46      0.46      0.45        94
+weighted avg       0.48      0.46      0.46        94
+
+
+Next Day Prediction:
+Ticker: JNJ
+Movement: DOWN
+Confidence: 76.39%

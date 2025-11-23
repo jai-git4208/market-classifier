@@ -1,0 +1,31 @@
+MARKET MOVEMENT CLASSIFIER - Technology
+======================================================================
+
+Category: TECH
+Tickers: AAPL, MSFT, GOOGL, NVDA
+SDG Aligned: No
+
+Training Accuracy:   1.0000
+Test Accuracy:       0.5426
+Test F1-Score:       0.6261
+Test ROC-AUC:        0.5473
+
+Confusion Matrix:
+[[15 29]
+ [14 36]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.52      0.34      0.41        44
+           1       0.55      0.72      0.63        50
+
+    accuracy                           0.54        94
+   macro avg       0.54      0.53      0.52        94
+weighted avg       0.54      0.54      0.53        94
+
+
+Next Day Prediction:
+Ticker: AAPL
+Movement: UP
+Confidence: 76.35%

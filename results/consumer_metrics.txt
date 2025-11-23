@@ -1,0 +1,31 @@
+MARKET MOVEMENT CLASSIFIER - Consumer & Retail
+======================================================================
+
+Category: CONSUMER
+Tickers: AMZN, WMT, HD, NKE
+SDG Aligned: No
+
+Training Accuracy:   1.0000
+Test Accuracy:       0.5426
+Test F1-Score:       0.4557
+Test ROC-AUC:        0.5678
+
+Confusion Matrix:
+[[33  9]
+ [34 18]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.49      0.79      0.61        42
+           1       0.67      0.35      0.46        52
+
+    accuracy                           0.54        94
+   macro avg       0.58      0.57      0.53        94
+weighted avg       0.59      0.54      0.52        94
+
+
+Next Day Prediction:
+Ticker: AMZN
+Movement: DOWN
+Confidence: 78.72%
