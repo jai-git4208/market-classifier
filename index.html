@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+
+        .lucide {
+            display: inline-block;
+            stroke-width: 2;
+            vertical-align: middle;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-green': '#10b981',
+                        'primary-red': '#ef4444',
+                    }
+                }
+            }
+        }
+
+        const API_BASE = 'http://localhost:5000/api';
+        let stockData = [];
+
+        function createStockCard(stock) {
+            const colorClass = stock.isPositive ? 'text-primary-green' : 'text-primary-red';
+            const priceColorClass = stock.isPositive ? 'bg-primary-green/10' : 'bg-primary-red/10';
+
+            return `
+                <div class="p-4 border-t border-gray-100 mt-4 first:mt-0">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="text-xl font-semibold text-gray-800">${stock.ticker}</h3>
+                        <span class="text-2xl font-bold ${colorClass} py-1 px-3 rounded-full ${priceColorClass}">
+                            $${stock.predictedPrice.toFixed(2)}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
+                        <div class="font-medium text-gray-700">Current Price:</div>
+                        <div class="text-right">$${stock.currentPrice.toFixed(2)}</div>
+                        
+                        <div class="font-medium text-gray-700">Predicted Change:</div>
+                        <div class="text-right font-semibold ${colorClass}">${stock.predictedChange}</div>
+                        
+                        <div class="font-medium text-gray-700">Confidence Level:</div>
+                        <div class="text-right font-semibold text-blue-600">${stock.confidenceLevel}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStocks() {
+            const container = document.getElementById('stock-predictions-container');
+            if (container && stockData.length > 0) {
+                container.innerHTML = stockData.map(createStockCard).join('');
+            } else if (container) {
+                container.innerHTML = '<div class="text-center p-8 text-gray-400">No predictions yet. Search for stocks above.</div>';
+            }
+        }
+
+        function showLoading() {
+            const container = document.getElementById('stock-predictions-container');
+            container.innerHTML = `
+                <div class="text-center p-8">
+                    <div class="loading-spinner mx-auto mb-3"></div>
+                    <p class="text-gray-500 text-sm font-semibold">Training ML model on 2 years of data...</p>
+                    <p class="text-gray-400 text-xs mt-2">Engineering features • Training XGBoost • Predicting movements</p>
+                    <p class="text-gray-400 text-xs mt-1">(This may take 30-60 seconds on first request)</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('stock-predictions-container');
+            container.innerHTML = `
+                <div class="text-center p-8">
+                    <div class="text-red-500 mb-2">
+                        <i data-lucide="alert-circle" class="lucide w-12 h-12 mx-auto"></i>
+                    </div>
+                    <p class="text-gray-600 text-sm">${message}</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        async function handleSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            
+            if (!query) {
+                document.getElementById('search-status').textContent = 'Please enter at least one stock ticker.';
+                document.getElementById('search-status').classList.add('text-red-500');
+                return;
+            }
+
+            document.getElementById('search-status').textContent = `Running main.py pipeline for "${query}"...`;
+            document.getElementById('search-status').classList.remove('text-red-500');
+            document.getElementById('search-status').classList.add('text-blue-500');
+            
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tickers: query })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch predictions');
+                }
+
+                const data = await response.json();
+                stockData = data.predictions;
+                
+                renderStocks();
+                
+                let statusText = `Loaded ${stockData.length} prediction(s).`;
+                if (data.metadata) {
+                    statusText += ` Model Accuracy: ${(data.metadata.model_accuracy * 100).toFixed(1)}%`;
+                }
+                
+                document.getElementById('search-status').textContent = statusText;
+                document.getElementById('search-status').classList.remove('text-blue-500');
+                document.getElementById('search-status').classList.add('text-green-500');
+                
+            } catch (error) {
+                console.error('Error fetching predictions:', error);
+                showError(error.message || 'Failed to load predictions. Please try again.');
+                document.getElementById('search-status').textContent = 'Error loading predictions.';
+                document.getElementById('search-status').classList.remove('text-blue-500');
+                document.getElementById('search-status').classList.add('text-red-500');
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                handleSearch();
+            }
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            document.getElementById('search-input').value = "AAPL, TSLA, GOOGL";
+            document.getElementById('search-input').addEventListener('keypress', handleKeyPress);
+        };
+
+    </script>
+</head>
+<body>
+
+    <div class="w-full max-w-sm md:max-w-md bg-white rounded-xl shadow-2xl overflow-hidden ring-1 ring-gray-200">
+
+        <header class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h1 class="text-lg font-bold text-gray-800">Market Movement Classifier</h1>
+            <div class="flex items-center space-x-3">
+                <span class="text-sm font-semibold text-gray-600">Aimers Predictor</span>
+                <button class="text-gray-500 hover:text-gray-800 transition duration-150">
+                    <i data-lucide="share-2" class="lucide w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-4">
+            <p class="text-sm text-gray-500 mb-3">Search for stocks and get AI-powered predictions using main.py pipeline</p>
+            <div class="relative">
+                <i data-lucide="search" class="lucide w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input 
+                    id="search-input"
+                    type="text" 
+                    placeholder="Search for stocks (e.g., AAPL, TSLA, GOOGL)" 
+                    class="w-full py-3 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm text-gray-700"
+                    value=""
+                />
+                <button onclick="handleSearch()" class="absolute right-0 top-0 h-full px-3 text-blue-600 hover:text-blue-800 transition duration-150 font-medium text-sm">
+                    Search
+                </button>
+            </div>
+            <p id="search-status" class="text-xs text-gray-500 mt-2 h-4 transition-all duration-300"></p>
+        </div>
+
+        <div id="stock-predictions-container" class="pb-3">
+            <div class="text-center p-8 text-gray-400">Search for stocks to see predictions...</div>
+        </div>
+        
+        <footer class="p-4 border-t border-gray-100 bg-gray-50 text-center text-xs text-gray-500 font-medium">
+            <i data-lucide="zap" class="lucide w-4 h-4 inline mr-1 text-blue-500"></i>
+            Powered by Meet and Jaimin • Using main.py ML Pipeline
+        </footer>
+    </div>
+
+</body>
+</html>
