@@ -1,0 +1,26 @@
+CLEAN ENERGY MARKET MOVEMENT CLASSIFIER
+======================================================================
+
+Training Accuracy:   0.9733
+Test Accuracy:       0.4211
+Test F1-Score:       0.4762
+Test ROC-AUC:        0.5476
+
+Confusion Matrix:
+[[3 9]
+ [2 5]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.60      0.25      0.35        12
+           1       0.36      0.71      0.48         7
+
+    accuracy                           0.42        19
+   macro avg       0.48      0.48      0.41        19
+weighted avg       0.51      0.42      0.40        19
+
+
+Next Day Prediction:
+Movement: UP
+Confidence: 93.93%
