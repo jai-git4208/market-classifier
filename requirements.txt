@@ -1,3 +1,32 @@
+# Market Movement Classifier - Python Dependencies
+# Core ML and Data Science
+pandas==2.1.3
+numpy==1.24.3
+scikit-learn==1.3.2
+scipy==1.15.3
+xgboost==2.0.2
+
+# Stock Data
+yfinance==0.2.66
+
+# Technical Analysis
+ta==0.11.0
+
+# Web Framework
+Flask==3.1.2
+flask-cors==6.0.1
+
+# Visualization
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# Utilities
+python-dateutil==2.9.0.post0
+pytz==2025.2
+
+# Enhanced features for hackathon
+lightgbm==4.1.0  # For ensemble models
+shap==0.44.0     # For model explainability (SHAP values)
 anyio==4.11.0
 appdirs==1.4.4
 argon2-cffi==25.1.0
@@ -14,6 +43,7 @@ certifi==2025.11.12
 cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.1
+cloudpickle==3.1.2
 comm==0.2.3
 contourpy==1.3.2
 curl_cffi==0.13.0
@@ -56,6 +86,8 @@ jupyterlab_pygments==0.3.0
 jupyterlab_server==2.28.0
 kiwisolver==1.4.9
 lark==1.3.1
+lightgbm==4.6.0
+llvmlite==0.45.1
 lxml==6.0.2
 MarkupSafe==3.0.3
 matplotlib==3.8.2
@@ -68,10 +100,11 @@ nbformat==5.10.4
 nest-asyncio==1.6.0
 notebook==7.5.0
 notebook_shim==0.2.4
-numpy==1.24.3
+numba==0.62.1
+numpy==1.26.4
 overrides==7.7.0
 packaging==25.0
-pandas==2.1.3
+pandas==2.3.3
 pandocfilters==1.5.1
 parso==0.8.5
 peewee==3.18.3
@@ -98,11 +131,13 @@ rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
 rfc3987-syntax==1.1.0
 rpds-py==0.29.0
-scikit-learn==1.3.2
+scikit-learn==1.7.2
 scipy==1.15.3
 seaborn==0.13.0
 Send2Trash==1.8.3
+shap==0.42.1
 six==1.17.0
+slicer==0.0.7
 sniffio==1.3.1
 soupsieve==2.8
 stack-data==0.6.3
@@ -111,6 +146,7 @@ terminado==0.18.1
 threadpoolctl==3.6.0
 tinycss2==1.4.0
 tornado==6.5.2
+tqdm==4.67.1
 traitlets==5.14.3
 typing_extensions==4.15.0
 tzdata==2025.2
