@@ -91,28 +91,64 @@
         let stockData = [];
         let currentTickers = '';
 
+        function formatCurrency(amount, currency) {
+            // Use Intl.NumberFormat for proper currency formatting
+            const formatter = new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            return `${currency}${formatter.format(amount)}`;
+        }
+
         function createStockCard(stock) {
             const colorClass = stock.isPositive ? 'text-primary-green' : 'text-primary-red';
             const priceColorClass = stock.isPositive ? 'bg-primary-green/10' : 'bg-primary-red/10';
+            const directionArrow = stock.arrow || (stock.isPositive ? '↑' : '↓');
+            const directionText = stock.direction || (stock.isPositive ? 'UP' : 'DOWN');
+            const currency = stock.currency || '$';
+            
+            // Format current price with proper currency
+            const currentPriceFormatted = formatCurrency(stock.currentPrice, currency);
+            const estimatedPriceFormatted = stock.estimatedPrice ? formatCurrency(stock.estimatedPrice, currency) : 'N/A';
+            const priceChange = stock.estimatedPrice ? ((stock.estimatedPrice - stock.currentPrice) / stock.currentPrice * 100).toFixed(2) : null;
 
             return `
-                <div class="p-4 border-t border-gray-100 mt-4 first:mt-0">
+                <div class="p-4 border-t border-gray-100 mt-4 first:mt-0 ${stock.hasRealPrediction ? '' : 'opacity-60'}">
                     <div class="flex justify-between items-start mb-3">
-                        <h3 class="text-xl font-semibold text-gray-800">${stock.ticker}</h3>
-                        <span class="text-2xl font-bold ${colorClass} py-1 px-3 rounded-full ${priceColorClass}">
-                            $${stock.predictedPrice.toFixed(2)}
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800">${stock.ticker}</h3>
+                            ${stock.hasRealPrediction ? '<span class="text-xs text-green-600 font-medium">✓ ML Prediction</span>' : '<span class="text-xs text-gray-400">Limited data</span>'}
+                        </div>
+                        <span class="text-4xl font-bold ${colorClass} py-2 px-4 rounded-full ${priceColorClass} flex items-center justify-center min-w-[80px]">
+                            ${directionArrow}
                         </span>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
+                    <div class="grid grid-cols-2 gap-y-2 text-sm text-gray-600 mt-3">
                         <div class="font-medium text-gray-700">Current Price:</div>
-                        <div class="text-right">$${stock.currentPrice.toFixed(2)}</div>
+                        <div class="text-right font-semibold">${currentPriceFormatted}</div>
                         
-                        <div class="font-medium text-gray-700">Predicted Change:</div>
-                        <div class="text-right font-semibold ${colorClass}">${stock.predictedChange}</div>
+                        ${stock.estimatedPrice ? `
+                        <div class="font-medium text-gray-700">Estimated Price:</div>
+                        <div class="text-right font-bold ${colorClass}">${estimatedPriceFormatted}</div>
                         
-                        <div class="font-medium text-gray-700">Confidence Level:</div>
-                        <div class="text-right font-semibold text-blue-600">${stock.confidenceLevel}</div>
+                        <div class="font-medium text-gray-700">Expected Change:</div>
+                        <div class="text-right font-semibold ${colorClass}">${priceChange > 0 ? '+' : ''}${priceChange}%</div>
+                        ` : ''}
+                        
+                        <div class="font-medium text-gray-700">Direction:</div>
+                        <div class="text-right font-bold ${colorClass} text-lg">${directionText} ${directionArrow}</div>
+                        
+                        <div class="font-medium text-gray-700">Confidence:</div>
+                        <div class="text-right font-semibold text-blue-600">${stock.confidence || stock.confidenceLevel || 'N/A'}%</div>
+                        
+                        ${stock.probabilityUp !== undefined ? `
+                        <div class="font-medium text-gray-700">P(UP):</div>
+                        <div class="text-right text-green-600">${stock.probabilityUp}%</div>
+                        
+                        <div class="font-medium text-gray-700">P(DOWN):</div>
+                        <div class="text-right text-red-600">${stock.probabilityDown}%</div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -187,9 +223,12 @@
                 
                 renderStocks();
                 
-                let statusText = `Loaded ${stockData.length} prediction(s).`;
+                let statusText = `Loaded ${stockData.length} real ML prediction(s).`;
                 if (data.metadata) {
                     statusText += ` Model Accuracy: ${(data.metadata.model_accuracy * 100).toFixed(1)}%`;
+                    if (data.metadata.note) {
+                        statusText += ` (${data.metadata.note})`;
+                    }
                 }
                 
                 document.getElementById('search-status').textContent = statusText;
