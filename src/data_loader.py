@@ -10,13 +10,23 @@ class CleanEnergyDataLoader:
     # Predefined ticker categories
     TICKER_CATEGORIES = {
         'SDG_CLEAN_ENERGY': {
-            'tickers': ['ICLN', 'TAN', 'ENPH', 'FSLR'],
+            'tickers': ['ICLN', 'TAN', 'ENPH', 'FSLR', 'RUN', 'SEDG'],
             'description': 'Clean Energy (SDG #7)',
             'sdg_aligned': True
         },
         'SDG_HEALTH': {
-            'tickers': ['JNJ', 'PFE', 'UNH', 'ABBV'],
+            'tickers': ['JNJ', 'PFE', 'UNH', 'ABBV', 'TMO', 'DHR'],
             'description': 'Healthcare (SDG #3)',
+            'sdg_aligned': True
+        },
+        'SDG_CLIMATE': {
+            'tickers': ['TSLA', 'NEE', 'BEP', 'ENPH', 'RUN'],
+            'description': 'Climate Action (SDG #13)',
+            'sdg_aligned': True
+        },
+        'SDG_INNOVATION': {
+            'tickers': ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'AMD'],
+            'description': 'Industry & Innovation (SDG #9)',
             'sdg_aligned': True
         },
         'TECH': {
@@ -198,12 +208,26 @@ class CleanEnergyDataLoader:
                 'SDG_CLEAN_ENERGY': {
                     'sdg_number': 7,
                     'sdg_name': 'Affordable and Clean Energy',
-                    'impact': 'Supports renewable energy investment and clean energy transition'
+                    'impact': 'Supports renewable energy investment and clean energy transition. Enables better capital allocation to sustainable energy projects.',
+                    'targets': ['7.2', '7.3', '7.a', '7.b']
                 },
                 'SDG_HEALTH': {
                     'sdg_number': 3,
                     'sdg_name': 'Good Health and Well-being',
-                    'impact': 'Promotes healthcare access and pharmaceutical innovation'
+                    'impact': 'Promotes healthcare access and pharmaceutical innovation. Helps investors identify healthcare opportunities.',
+                    'targets': ['3.8', '3.b', '3.d']
+                },
+                'SDG_CLIMATE': {
+                    'sdg_number': 13,
+                    'sdg_name': 'Climate Action',
+                    'impact': 'Supports climate-friendly investments and carbon reduction initiatives. Aligns with Paris Agreement goals.',
+                    'targets': ['13.1', '13.2', '13.3']
+                },
+                'SDG_INNOVATION': {
+                    'sdg_number': 9,
+                    'sdg_name': 'Industry, Innovation and Infrastructure',
+                    'impact': 'Enhances investment in sustainable infrastructure and innovation. Promotes inclusive industrialization.',
+                    'targets': ['9.1', '9.4', '9.5']
                 }
             }
             return sdg_mapping.get(self.category, {})
