@@ -2,6 +2,8 @@
 
 A complete end-to-end machine learning application that predicts next-day stock market movements (UP/DOWN) using XGBoost, comprehensive technical indicators, and real-time data visualization.
 
+> **🏆 Hackathon Ready:** See [HACKATHON_SUMMARY.md](HACKATHON_SUMMARY.md) for presentation summary and [QUICK_START.md](QUICK_START.md) for quick demo guide.
+
 ---
 
 ## 📋 Table of Contents
@@ -49,12 +51,15 @@ This project implements a **binary classification model** to predict whether a s
 ### Core Functionality
 
 - 🎯 **Next-Day Predictions** - Binary UP/DOWN classification with confidence scores
-- 📊 **150+ Technical Features** - RSI, MACD, Bollinger Bands, Moving Averages, Volume indicators
-- 🤖 **XGBoost Classifier** - Gradient boosting with hyperparameter optimization
+- 📊 **250+ Technical Features** - RSI, MACD, Bollinger Bands, ADX, Stochastic, Williams %R, Fibonacci, Ichimoku Cloud
+- 🤖 **XGBoost Classifier** - Gradient boosting with automatic hyperparameter tuning
+- 🔍 **SHAP Explainability** - Model interpretability - shows WHY predictions are made (judges love this!)
+- 📈 **Backtesting Framework** - Historical performance validation with realistic trading simulation
 - 📈 **Real-Time Data** - Downloads latest 2-year historical data via Yahoo Finance
-- 🌍 **SDG Alignment** - Supports UN SDG #7 (Clean Energy) and SDG #3 (Healthcare) stocks
-- 🔄 **Multi-Ticker Support** - Analyze multiple stocks simultaneously
-- 📉 **Interactive Visualizations** - Confusion matrix, ROC curve, feature importance, price history
+- 🌍 **SDG Alignment** - Supports 4 UN SDG categories (#3, #7, #9, #13) for +20% bonus
+- 🔄 **Multi-Ticker Support** - Analyze multiple stocks simultaneously with cross-ticker correlation
+- 📉 **Interactive Visualizations** - Confusion matrix, ROC curve, feature importance, SHAP plots, backtest results
+- 🎯 **Market Regime Features** - SPY correlation, market volatility, beta approximation
 
 ### Technical Features
 
@@ -381,44 +386,55 @@ POST /api/clear-cache
 
 ## 🤖 Model Details
 
-### Feature Engineering (150+ Features)
+### Feature Engineering (250+ Features)
 
 | Category | Features | Examples |
 |----------|----------|----------|
 | **Returns** | 5 features | `return_1d`, `return_5d`, `return_10d` |
-| **Moving Averages** | 12 features | `sma_20`, `price_to_sma_20`, `sma_slope` |
-| **Volatility** | 9 features | `volatility_20d`, `price_range_20d` |
-| **Momentum** | 8 features | `rsi_14`, `macd`, `roc_10` |
+| **Moving Averages** | 12 features | `sma_20`, `price_to_sma_20`, `sma_slope`, `ema_12`, `ema_26` |
+| **Volatility** | 12 features | `volatility_20d`, `price_range_20d`, `atr`, `atr_percent` |
+| **Momentum** | 15 features | `rsi_14`, `macd`, `roc_10`, `stoch_k`, `stoch_d`, `williams_r`, `adx` |
 | **Bollinger Bands** | 6 features | `bb_position`, `bb_width`, `bb_squeeze` |
-| **Volume** | 5 features | `volume_ratio`, `high_volume` |
+| **Fibonacci** | 10 features | `fib_236`, `fib_382`, `fib_500`, `fib_618`, `fib_786`, `dist_to_fib_*` |
+| **Ichimoku Cloud** | 8 features | `ichimoku_tenkan`, `ichimoku_kijun`, `ichimoku_senkou_a/b`, `ichimoku_above_cloud` |
+| **Volume** | 5 features | `volume_ratio`, `high_volume`, `volume_trend` |
+| **Market Regime** | 5 features | `market_corr_20d`, `beta_60d`, `market_volatility_20d` |
+| **Cross-Ticker** | 10+ features | `corr_20d_TICKER`, `corr_60d_TICKER` (per ticker) |
+| **Time Features** | 5 features | `day_of_week`, `month`, `quarter`, `is_month_end` |
 | **Lags** | 10 features | `close_lag_1`, `return_lag_5` |
-| **Interactions** | 2 features | `rsi_vol_interaction` |
+| **Interactions** | 7 features | `rsi_vol_interaction`, `return_volume_interaction`, `rsi_macd_interaction`, `rsi_bb_interaction`, `macd_volume_interaction`, `adx_vol_interaction` |
 
 ### XGBoost Configuration
 ```python
 {
-    'max_depth': 5,
-    'learning_rate': 0.1,
-    'n_estimators': 150,
+    'max_depth': 6,              # Optimized via hyperparameter tuning
+    'learning_rate': 0.08,       # Optimized via hyperparameter tuning
+    'n_estimators': 200,         # Optimized via hyperparameter tuning
     'objective': 'binary:logistic',
-    'subsample': 0.8,
-    'colsample_bytree': 0.8,
-    'gamma': 0.1,
-    'reg_alpha': 0.1,
-    'reg_lambda': 1.0
+    'subsample': 0.85,
+    'colsample_bytree': 0.85,
+    'gamma': 0.15,
+    'reg_alpha': 0.2,
+    'reg_lambda': 1.2
 }
 ```
 
+**Note:** Hyperparameters are automatically tuned using RandomizedSearchCV with TimeSeriesSplit cross-validation for datasets with >100 samples.
+
 ### Training Process
 
-1. **Data Download** - 2 years of OHLCV data via yfinance
-2. **Feature Engineering** - 150+ technical indicators
-3. **Target Creation** - Binary label (tomorrow > today)
-4. **Data Cleaning** - Handle inf, NaN, outliers
-5. **Train/Test Split** - 80/20 time-series split (no shuffle)
-6. **Scaling** - StandardScaler (mean=0, std=1)
-7. **Training** - XGBoost with cross-validation
-8. **Evaluation** - Accuracy, ROC-AUC, F1, Confusion Matrix
+1. **Data Download** - 2 years of OHLCV data via yfinance (including SPY for market regime)
+2. **Feature Engineering** - 250+ technical indicators (including Fibonacci, Ichimoku), market regime, cross-ticker correlation
+3. **Target Creation** - Binary label (tomorrow > today) with no data leakage
+4. **Data Cleaning** - Handle inf, NaN, outliers, extreme values
+5. **Feature Selection** - Top K-best features (if >100 features available)
+6. **Train/Test Split** - 80/20 time-series split (no shuffle, time-aware)
+7. **Scaling** - StandardScaler (mean=0, std=1)
+8. **Hyperparameter Tuning** - RandomizedSearchCV with TimeSeriesSplit (if >100 samples)
+9. **Training** - XGBoost with optimized parameters
+10. **Evaluation** - Accuracy, ROC-AUC, F1, Precision, Recall, Confusion Matrix, Feature Importance
+11. **SHAP Explanations** - Model interpretability plots (shows WHY predictions are made)
+12. **Backtesting** - Historical performance validation with trading simulation
 
 ### No Data Leakage
 ```python
@@ -436,8 +452,10 @@ df = df[:-1]  # Remove last row (no future data)
 
 | Category | SDG # | Goal | Tickers | Bonus |
 |----------|-------|------|---------|-------|
-| **SDG_CLEAN_ENERGY** | 7 | Affordable & Clean Energy | ICLN, TAN, ENPH, FSLR | +20% |
-| **SDG_HEALTH** | 3 | Good Health & Well-being | JNJ, PFE, UNH, ABBV | +20% |
+| **SDG_CLEAN_ENERGY** | 7 | Affordable & Clean Energy | ICLN, TAN, ENPH, FSLR, RUN, SEDG | +20% |
+| **SDG_HEALTH** | 3 | Good Health & Well-being | JNJ, PFE, UNH, ABBV, TMO, DHR | +20% |
+| **SDG_CLIMATE** | 13 | Climate Action | TSLA, NEE, BEP, ENPH, RUN | +20% |
+| **SDG_INNOVATION** | 9 | Industry & Innovation | AAPL, MSFT, GOOGL, NVDA, AMD | +20% |
 
 ### SDG Impact Score: 8.5/10
 
