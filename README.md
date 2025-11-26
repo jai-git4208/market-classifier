@@ -53,6 +53,7 @@ This project implements a **binary classification model** to predict whether a s
 - 🎯 **Next-Day Predictions** - Binary UP/DOWN classification with confidence scores
 - 📊 **250+ Technical Features** - RSI, MACD, Bollinger Bands, ADX, Stochastic, Williams %R, Fibonacci, Ichimoku Cloud
 - 🤖 **XGBoost Classifier** - Gradient boosting with automatic hyperparameter tuning
+- 🧠 **Buy/Sell/Hold Guidance** - Actionable trade opinions with confidence, risk note, and expected move
 - 🔍 **SHAP Explainability** - Model interpretability - shows WHY predictions are made (judges love this!)
 - 📈 **Backtesting Framework** - Historical performance validation with realistic trading simulation
 - 📈 **Real-Time Data** - Downloads latest 2-year historical data via Yahoo Finance
@@ -60,6 +61,7 @@ This project implements a **binary classification model** to predict whether a s
 - 🔄 **Multi-Ticker Support** - Analyze multiple stocks simultaneously with cross-ticker correlation
 - 📉 **Interactive Visualizations** - Confusion matrix, ROC curve, feature importance, SHAP plots, backtest results
 - 🎯 **Market Regime Features** - SPY correlation, market volatility, beta approximation
+- 🧾 **One-Click CSV + Visual Export** - Download enriched predictions plus PNG charts as a zip bundle for reporting
 
 ### Technical Features
 
@@ -193,6 +195,7 @@ python3 app.py
 - Open browser: `http://localhost:8080`
 - Search for stocks: `AAPL, TSLA, GOOGL`
 - Click "View Model Visualizations"
+- Click "Download CSV + Visuals" to grab a zip containing predictions + charts
 
 ---
 
@@ -293,10 +296,16 @@ POST /api/predict
     {
       "ticker": "AAPL",
       "currentPrice": 172.50,
-      "predictedPrice": 175.43,
-      "predictedChange": "+1.7%",
-      "confidenceLevel": "87%",
-      "isPositive": true
+      "estimatedPrice": 175.43,
+      "direction": "UP",
+      "confidence": 87.0,
+      "probabilityUp": 63.5,
+      "probabilityDown": 36.5,
+      "recommendation": "BUY",
+      "riskLevel": "Medium",
+      "expectedMovePct": 1.7,
+      "rationale": "Model detects 63.5% probability of upside with solid momentum.",
+      "riskNote": "Risk level: Medium (σ≈1.35%)"
     }
   ],
   "metadata": {
@@ -382,6 +391,24 @@ POST /api/clear-cache
 }
 ```
 
+#### 6. Download Predictions + Visualizations
+```http
+POST /api/download-report
+```
+
+**Request Body:**
+```json
+{
+  "tickers": "AAPL, TSLA"
+}
+```
+
+**Response:**
+- `200 OK` with `application/zip` payload.
+- Contents: `predictions.csv`, `metrics.csv`, and `visualizations/<ticker>/*.png`.
+
+> Use this endpoint when you need an auditable artifact for judges, PMs, or downstream dashboards.
+
 ---
 
 ## 🤖 Model Details
@@ -432,9 +459,10 @@ POST /api/clear-cache
 7. **Scaling** - StandardScaler (mean=0, std=1)
 8. **Hyperparameter Tuning** - RandomizedSearchCV with TimeSeriesSplit (if >100 samples)
 9. **Training** - XGBoost with optimized parameters
-10. **Evaluation** - Accuracy, ROC-AUC, F1, Precision, Recall, Confusion Matrix, Feature Importance
-11. **SHAP Explanations** - Model interpretability plots (shows WHY predictions are made)
-12. **Backtesting** - Historical performance validation with trading simulation
+10. **Validation Hold-Out** - Last 10-15% of training window used as an internal validation fold with early stopping
+11. **Evaluation** - Accuracy, ROC-AUC, F1, Precision, Recall, Confusion Matrix, Feature Importance
+12. **SHAP Explanations** - Model interpretability plots (shows WHY predictions are made)
+13. **Backtesting** - Historical performance validation with trading simulation
 
 ### No Data Leakage
 ```python
@@ -477,6 +505,8 @@ df = df[:-1]  # Remove last row (no future data)
 | **ROC-AUC** | 0.65-0.75 | Moderate discriminative ability |
 | **F1-Score** | 0.55-0.65 | Balanced precision-recall |
 | **Training Time** | 30-60s | First request (cached afterward) |
+
+> **Reality Check:** The training loop now carves out a rolling validation fold with early stopping. This prevents the suspicious 100% training accuracy seen before and surfaces a `val_accuracy` metric inside the API response/visualizations.
 
 ### Why 55-65% is Realistic
 
@@ -583,7 +613,7 @@ selector = SelectKBest(f_classif, k=30)  # Top 30 features
 ### Short-Term (Easy)
 - [ ] Add more predefined categories (Commodities, Crypto, REITs)
 - [ ] Email/SMS alerts for predictions
-- [ ] Export predictions to CSV
+- [x] Export predictions to CSV (includes visualization bundle zip)
 - [ ] Add dark mode to frontend
 - [ ] Deployment scripts (Docker, Heroku)
 
