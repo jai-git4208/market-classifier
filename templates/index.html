@@ -73,6 +73,17 @@
             height: auto;
             border-radius: 0.5rem;
         }
+
+        .viz-description {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
     </style>
     
     <script>
@@ -149,6 +160,23 @@
                         <div class="font-medium text-gray-700">P(DOWN):</div>
                         <div class="text-right text-red-600">${stock.probabilityDown}%</div>
                         ` : ''}
+
+                        ${stock.expectedChangePct !== undefined && stock.expectedChangePct !== null ? `
+                        <div class="font-medium text-gray-700">Expected Move:</div>
+                        <div class="text-right font-semibold ${colorClass}">${stock.expectedChangePct > 0 ? '+' : ''}${stock.expectedChangePct}%</div>
+                        ` : ''}
+                    </div>
+
+                    <div class="mt-5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase tracking-wide">Suggested Action</p>
+                                <p class="text-lg font-bold text-gray-900">${stock.recommendation || 'N/A'}</p>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">${stock.riskLevel || 'Unknown'} risk</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">${stock.rationale || 'Action rationale unavailable.'}</p>
+                        <p class="text-xs text-gray-400 mt-1">${stock.riskNote || ''}</p>
                     </div>
                 </div>
             `;
@@ -224,7 +252,7 @@
                 renderStocks();
                 
                 let statusText = `Loaded ${stockData.length} real ML prediction(s).`;
-                if (data.metadata) {
+                if (data.metadata && data.metadata.model_accuracy !== undefined && !isNaN(data.metadata.model_accuracy)) {
                     statusText += ` Model Accuracy: ${(data.metadata.model_accuracy * 100).toFixed(1)}%`;
                     if (data.metadata.note) {
                         statusText += ` (${data.metadata.note})`;
@@ -236,6 +264,7 @@
                 document.getElementById('search-status').classList.add('text-green-500');
 
                 document.getElementById('view-viz-btn').classList.remove('hidden');
+                document.getElementById('download-report-btn').classList.remove('hidden');
                 
             } catch (error) {
                 console.error('Error fetching predictions:', error);
@@ -305,28 +334,43 @@
                         <!-- Visualizations -->
                         <div class="space-y-6">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800 mb-3">Price History (2 Years)</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Price History (2 Years)</h3>
+                                <div class="viz-description">
+                                    <strong>What this shows:</strong> Historical closing prices over the past 2 years. This helps understand the stock's price trends, volatility, and overall market behavior during different periods. You can see how the stock has performed over time, identify patterns, and observe any significant price movements or market events.
+                                </div>
                                 <img src="${data.priceHistory}" class="viz-image border border-gray-200" alt="Price History">
                             </div>
 
                             <div class="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <h3 class="text-lg font-semibold text-gray-800 mb-3">Confusion Matrix</h3>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Confusion Matrix</h3>
+                                    <div class="viz-description">
+                                        <strong>What this shows:</strong> A breakdown of correct vs incorrect predictions. The diagonal shows correct predictions (true positives/negatives), while off-diagonal shows errors. Higher diagonal values indicate better model performance. This helps you understand where the model makes mistakes and how accurate it is for UP vs DOWN predictions.
+                                    </div>
                                     <img src="${data.confusionMatrix}" class="viz-image border border-gray-200" alt="Confusion Matrix">
                                 </div>
                                 <div>
-                                    <h3 class="text-lg font-semibold text-gray-800 mb-3">ROC Curve</h3>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-2">ROC Curve</h3>
+                                    <div class="viz-description">
+                                        <strong>What this shows:</strong> Receiver Operating Characteristic curve measuring the model's ability to distinguish between UP and DOWN movements. A curve closer to the top-left corner indicates better predictive power. The area under the curve (AUC) quantifies overall performance - values closer to 1.0 mean better classification ability.
+                                    </div>
                                     <img src="${data.rocCurve}" class="viz-image border border-gray-200" alt="ROC Curve">
                                 </div>
                             </div>
 
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800 mb-3">Feature Importance</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Feature Importance</h3>
+                                <div class="viz-description">
+                                    <strong>What this shows:</strong> The top features that most influence the model's predictions. Features like technical indicators (RSI, MACD, moving averages), price patterns, and market regime indicators are ranked by their contribution to the model's decision-making process. This helps you understand which factors the AI considers most important when making predictions.
+                                </div>
                                 <img src="${data.featureImportance}" class="viz-image border border-gray-200" alt="Feature Importance">
                             </div>
 
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800 mb-3">Returns Distribution</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Returns Distribution</h3>
+                                <div class="viz-description">
+                                    <strong>What this shows:</strong> The frequency distribution of daily returns. This reveals the stock's volatility patterns, showing how often different return magnitudes occur. A normal distribution centered around zero suggests typical market behavior, while skewness indicates directional bias. This helps assess the stock's risk profile and return characteristics.
+                                </div>
                                 <img src="${data.returnsDistribution}" class="viz-image border border-gray-200" alt="Returns Distribution">
                             </div>
                         </div>
@@ -365,6 +409,49 @@
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 handleSearch();
+            }
+        }
+
+        async function downloadReport() {
+            if (!currentTickers) {
+                document.getElementById('search-status').textContent = 'Run a prediction before exporting.';
+                document.getElementById('search-status').classList.add('text-red-500');
+                return;
+            }
+            const button = document.getElementById('download-report-btn');
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="loading-spinner mr-2"></span>Preparing ZIP...';
+            try {
+                const response = await fetch(`${API_BASE}/download-report`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tickers: currentTickers })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to prepare report');
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `market-report-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                document.getElementById('search-status').textContent = 'Report downloaded successfully.';
+                document.getElementById('search-status').classList.add('text-green-500');
+            } catch (error) {
+                console.error('Download error:', error);
+                document.getElementById('search-status').textContent = error.message || 'Failed to download report.';
+                document.getElementById('search-status').classList.add('text-red-500');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalText;
             }
         }
 
@@ -419,11 +506,15 @@
             <div class="text-center p-8 text-gray-400">Search for stocks to see predictions...</div>
         </div>
 
-        <!-- View Visualizations Button -->
-        <div class="px-4 pb-4">
+        <!-- Action Buttons -->
+        <div class="px-4 pb-4 space-y-2">
             <button id="view-viz-btn" onclick="showVisualizations()" class="hidden w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition font-semibold flex items-center justify-center space-x-2">
                 <i data-lucide="bar-chart-3" class="lucide w-5 h-5"></i>
                 <span>View Model Visualizations</span>
+            </button>
+            <button id="download-report-btn" onclick="downloadReport()" class="hidden w-full bg-white border border-blue-500 text-blue-600 py-3 rounded-lg hover:bg-blue-50 transition font-semibold flex items-center justify-center space-x-2">
+                <i data-lucide="download" class="lucide w-5 h-5"></i>
+                <span>Download CSV + Visuals</span>
             </button>
         </div>
         
