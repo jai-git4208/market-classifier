@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 import base64
+import zipfile
 
 # Import from main.py instead of duplicating logic
 sys.path.insert(0, os.path.dirname(__file__))
@@ -61,6 +62,260 @@ def get_currency_symbol(ticker):
     else:
         return '$'  # Default to USD
 
+def normalize_ticker_input(tickers_input):
+    """Normalize tickers input from request payload"""
+    if isinstance(tickers_input, str):
+        tickers = [t.strip().upper() for t in tickers_input.split(',') if t.strip()]
+    else:
+        tickers = [str(t).strip().upper() for t in tickers_input if str(t).strip()]
+    return tickers
+
+def compute_risk_level(ticker_df):
+    """Approximate volatility-based risk level from returns"""
+    if ticker_df is None:
+        return 'Unknown', None
+    candidate_cols = [col for col in ticker_df.columns if 'return_1d' in col.lower()] or \
+                     [col for col in ticker_df.columns if col.lower().startswith('return')]
+    volatility = None
+    for col in candidate_cols:
+        series = ticker_df[col].dropna()
+        if len(series) > 25:
+            volatility = series.rolling(20).std().iloc[-1]
+            break
+    if volatility is None or np.isnan(volatility):
+        return 'Unknown', None
+    vol_pct = float(volatility) * 100
+    if vol_pct < 1:
+        return 'Low', vol_pct
+    if vol_pct < 2:
+        return 'Medium', vol_pct
+    return 'High', vol_pct
+
+def derive_investment_opinion(prediction_payload, ticker_df=None, current_price=None):
+    """Generate buy/sell/hold opinion and supporting text"""
+    direction = prediction_payload.get('prediction')
+    confidence = prediction_payload.get('confidence', 0)
+    prob_up = prediction_payload.get('probability_up', 0)
+    prob_down = prediction_payload.get('probability_down', 0)
+    estimated_price = prediction_payload.get('estimated_price')
+    
+    action = 'HOLD'
+    rationale = "Momentum signals are mixed; maintain current exposure."
+    
+    if direction == 'UP':
+        if confidence >= 0.65:
+            action = 'BUY'
+            rationale = f"Model detects {prob_up*100:.1f}% probability of upside with solid momentum."
+        elif confidence >= 0.55:
+            action = 'HOLD'
+            rationale = f"Upside bias ({prob_up*100:.1f}% probability) but conviction is moderate."
+    elif direction == 'DOWN':
+        if confidence >= 0.65:
+            action = 'SELL'
+            rationale = f"Downside pressure dominates with {prob_down*100:.1f}% probability; consider trimming exposure."
+        else:
+            action = 'HOLD'
+            rationale = f"Downside skew present but conviction is limited ({prob_down*100:.1f}% probability)."
+    
+    expected_move_pct = None
+    if estimated_price and current_price and current_price > 0:
+        expected_move_pct = ((estimated_price - current_price) / current_price) * 100
+    elif direction in ('UP', 'DOWN'):
+        bias = prob_up - prob_down
+        expected_move_pct = bias * 5  # heuristic scale
+    
+    risk_level, volatility_pct = compute_risk_level(ticker_df)
+    
+    supporting_note = f"Risk level: {risk_level}"
+    if volatility_pct is not None:
+        supporting_note += f" (σ≈{volatility_pct:.2f}%)"
+    
+    return {
+        'recommendation': action,
+        'rationale': rationale,
+        'expectedMovePct': round(expected_move_pct, 2) if expected_move_pct is not None else None,
+        'riskLevel': risk_level,
+        'riskNote': supporting_note
+    }
+
+def build_prediction_entry(ticker, result, sdg_alignment=None):
+    """Create enriched prediction payload for API responses"""
+    pred = result['prediction']
+    metrics = result['metrics']
+    ticker_df = result.get('ticker_df') or result.get('combined_df')
+    current_price = result.get('current_price') or get_current_price(ticker) or 0.0
+    currency = get_currency_symbol(ticker)
+    
+    enriched = derive_investment_opinion(pred, ticker_df=ticker_df, current_price=current_price)
+    estimated_price = pred.get('estimated_price', current_price)
+    
+    entry = {
+        'ticker': ticker,
+        'currentPrice': round(current_price, 2) if current_price else None,
+        'estimatedPrice': round(estimated_price, 2) if estimated_price else None,
+        'direction': pred.get('prediction'),
+        'arrow': pred.get('arrow', '↑' if pred.get('prediction') == 'UP' else '↓'),
+        'confidence': round(pred.get('confidence', 0) * 100, 1),
+        'probabilityUp': round(pred.get('probability_up', 0) * 100, 1),
+        'probabilityDown': round(pred.get('probability_down', 0) * 100, 1),
+        'currency': currency,
+        'isPositive': pred.get('prediction') == 'UP',
+        'hasRealPrediction': True,
+        'sdgAlignment': sdg_alignment or 'Not assessed',
+        **enriched
+    }
+    
+    expected_change = None
+    if entry['currentPrice'] and entry['estimatedPrice']:
+        try:
+            expected_change = ((entry['estimatedPrice'] - entry['currentPrice']) / entry['currentPrice']) * 100
+            entry['expectedChangePct'] = round(expected_change, 2)
+        except ZeroDivisionError:
+            entry['expectedChangePct'] = None
+    else:
+        entry['expectedChangePct'] = enriched.get('expectedMovePct')
+    
+    metric_entry = {
+        'ticker': ticker,
+        'accuracy': round(metrics.get('test_accuracy', 0), 4),
+        'roc_auc': round(metrics.get('test_roc_auc', 0), 4)
+    }
+    if 'val_accuracy' in metrics:
+        metric_entry['val_accuracy'] = round(metrics['val_accuracy'], 4)
+    
+    return entry, metric_entry
+
+def prepare_prediction_payload(tickers):
+    """Generate predictions, metadata, and cached pipeline result"""
+    pipeline_result = get_or_create_model(tickers)
+    if not pipeline_result:
+        return None
+    
+    predictions = []
+    metrics_list = []
+    
+    if pipeline_result.get('train_per_ticker') and 'results' in pipeline_result:
+        results_map = pipeline_result['results']
+        for ticker in tickers:
+            result = results_map.get(ticker)
+            if not result:
+                continue
+            entry, metric_entry = build_prediction_entry(ticker, result)
+            predictions.append(entry)
+            metrics_list.append(metric_entry)
+    else:
+        primary_ticker = pipeline_result.get('primary_ticker', tickers[0])
+        loader = pipeline_result.get('loader')
+        sdg_alignment = None
+        if loader and hasattr(loader, 'sdg_aligned'):
+            sdg_alignment = 'Yes' if getattr(loader, 'sdg_aligned') else 'No'
+        entry, metric_entry = build_prediction_entry(primary_ticker, pipeline_result,
+                                                     sdg_alignment=sdg_alignment)
+        predictions.append(entry)
+        metrics_list.append(metric_entry)
+    
+    if not predictions:
+        return None
+    
+    avg_accuracy = sum(m.get('accuracy', 0) for m in metrics_list) / len(metrics_list)
+    
+    metadata = {
+        'models_trained': len(predictions),
+        'per_ticker_models': pipeline_result.get('train_per_ticker', False),
+        'model_accuracy': avg_accuracy,
+        'metrics': metrics_list,
+        'requested_tickers': tickers,
+        'primary_ticker': predictions[0]['ticker']
+    }
+    
+    return {
+        'predictions': predictions,
+        'metadata': metadata,
+        'pipeline_result': pipeline_result
+    }
+
+def build_visualization_context(ticker, result, combined=False):
+    """Normalize result structure for visualization helpers"""
+    if combined:
+        return {
+            'classifier': result.get('classifier'),
+            'X_test': result.get('X_test'),
+            'y_test': result.get('y_test'),
+            'tickers': [ticker],
+            'loader': result.get('loader'),
+            'raw_data': result.get('raw_data'),
+            'ticker_df': result.get('combined_df'),
+            'ticker': ticker,
+            'primary_ticker': ticker,
+            'combined_df': result.get('combined_df')
+        }
+    
+    ticker_df = result.get('ticker_df')
+    
+    class MockLoader:
+        def __init__(self, df, ticker_name):
+            self.ticker_df = df
+            self.ticker_name = ticker_name
+            self.tickers = [ticker_name]
+        
+        def get_ticker_data(self, symbol):
+            if symbol == self.ticker_name:
+                return self.ticker_df
+            return None
+    
+    mock_loader = MockLoader(ticker_df, ticker)
+    
+    return {
+        'classifier': result.get('classifier'),
+        'X_test': result.get('X_test'),
+        'y_test': result.get('y_test'),
+        'tickers': [ticker],
+        'loader': mock_loader,
+        'raw_data': result.get('raw_data'),
+        'ticker_df': ticker_df,
+        'ticker': ticker,
+        'primary_ticker': ticker,
+        'combined_df': ticker_df
+    }
+
+def build_visualization_bundle(ticker, result, metrics, combined=False, as_data_uri=True):
+    """Create visualization outputs (data URIs or raw bytes) for a result"""
+    context = build_visualization_context(ticker, result, combined=combined)
+    return {
+        'confusionMatrix': create_confusion_matrix_image(metrics['confusion_matrix'], as_data_uri=as_data_uri),
+        'rocCurve': create_roc_curve_image(context, as_data_uri=as_data_uri),
+        'featureImportance': create_feature_importance_image(context, as_data_uri=as_data_uri),
+        'priceHistory': create_price_history_chart(context, as_data_uri=as_data_uri),
+        'returnsDistribution': create_returns_distribution_chart(context, as_data_uri=as_data_uri),
+        'metrics': {
+            'train_accuracy': round(metrics.get('train_accuracy', 0), 4),
+            'test_accuracy': round(metrics.get('test_accuracy', 0), 4),
+            'test_f1': round(metrics.get('test_f1', 0), 4),
+            'test_roc_auc': round(metrics.get('test_roc_auc', 0), 4),
+            'val_accuracy': round(metrics.get('val_accuracy', 0), 4) if 'val_accuracy' in metrics else None,
+            'confusion_matrix': metrics.get('confusion_matrix').tolist() if isinstance(metrics.get('confusion_matrix'), np.ndarray) else metrics.get('confusion_matrix')
+        }
+    }
+
+def write_visualizations_to_zip(zip_file, ticker, viz_bundle):
+    """Persist visualization bytes to the zip archive"""
+    filename_map = {
+        'confusionMatrix': 'confusion_matrix.png',
+        'rocCurve': 'roc_curve.png',
+        'featureImportance': 'feature_importance.png',
+        'priceHistory': 'price_history.png',
+        'returnsDistribution': 'returns_distribution.png'
+    }
+    for key, filename in filename_map.items():
+        blob = viz_bundle.get(key)
+        if not blob:
+            continue
+        zip_file.writestr(f'visualizations/{ticker}/{filename}', blob)
+    # Save metrics JSON snapshot for convenience
+    metrics_payload = viz_bundle.get('metrics')
+    if metrics_payload:
+        zip_file.writestr(f'visualizations/{ticker}/metrics.json', json.dumps(metrics_payload, indent=2))
+
 def get_or_create_model(tickers):
     """Get cached model or run main.py pipeline to create new one"""
     ticker_key = ','.join(sorted(tickers))
@@ -81,7 +336,7 @@ def get_or_create_model(tickers):
         
         return result
 
-def create_confusion_matrix_image(cm):
+def create_confusion_matrix_image(cm, as_data_uri=True):
     """Generate confusion matrix as base64 image"""
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
@@ -94,12 +349,15 @@ def create_confusion_matrix_image(cm):
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
     buf.seek(0)
-    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    image_bytes = buf.getvalue()
     plt.close()
     
-    return f"data:image/png;base64,{img_base64}"
+    if as_data_uri:
+        img_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        return f"data:image/png;base64,{img_base64}"
+    return image_bytes
 
-def create_roc_curve_image(pipeline_result):
+def create_roc_curve_image(pipeline_result, as_data_uri=True):
     """Generate ROC curve as base64 image"""
     from sklearn.metrics import roc_curve, auc
     
@@ -124,12 +382,15 @@ def create_roc_curve_image(pipeline_result):
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
     buf.seek(0)
-    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    image_bytes = buf.getvalue()
     plt.close()
     
-    return f"data:image/png;base64,{img_base64}"
+    if as_data_uri:
+        img_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        return f"data:image/png;base64,{img_base64}"
+    return image_bytes
 
-def create_feature_importance_image(pipeline_result, top_n=15):
+def create_feature_importance_image(pipeline_result, top_n=15, as_data_uri=True):
     """Generate feature importance chart as base64 image"""
     try:
         classifier = pipeline_result.get('classifier')
@@ -158,15 +419,18 @@ def create_feature_importance_image(pipeline_result, top_n=15):
         buf = io.BytesIO()
         plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
         buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        image_bytes = buf.getvalue()
         plt.close()
         
-        return f"data:image/png;base64,{img_base64}"
+        if as_data_uri:
+            img_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/png;base64,{img_base64}"
+        return image_bytes
     except Exception as e:
         print(f"  Warning: Feature importance chart failed: {e}")
         return None
 
-def create_price_history_chart(pipeline_result):
+def create_price_history_chart(pipeline_result, as_data_uri=True):
     """Generate price history chart as base64 image"""
     try:
         tickers = pipeline_result.get('tickers', [])
@@ -227,15 +491,18 @@ def create_price_history_chart(pipeline_result):
         buf = io.BytesIO()
         plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
         buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        image_bytes = buf.getvalue()
         plt.close()
         
-        return f"data:image/png;base64,{img_base64}"
+        if as_data_uri:
+            img_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/png;base64,{img_base64}"
+        return image_bytes
     except Exception as e:
         print(f"  Warning: Price history chart failed: {e}")
         return None
 
-def create_returns_distribution_chart(pipeline_result):
+def create_returns_distribution_chart(pipeline_result, as_data_uri=True):
     """Generate returns distribution as base64 image"""
     try:
         # Try to get data from different possible structures
@@ -277,10 +544,13 @@ def create_returns_distribution_chart(pipeline_result):
         buf = io.BytesIO()
         plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
         buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        image_bytes = buf.getvalue()
         plt.close()
         
-        return f"data:image/png;base64,{img_base64}"
+        if as_data_uri:
+            img_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/png;base64,{img_base64}"
+        return image_bytes
     except Exception as e:
         print(f"  Warning: Returns distribution chart failed: {e}")
         return None
@@ -290,91 +560,18 @@ def predict():
     """Main prediction endpoint - trains separate model for each ticker and returns predictions with estimated prices"""
     try:
         data = request.get_json()
-        tickers_input = data.get('tickers', '')
-        
-        if isinstance(tickers_input, str):
-            tickers = [t.strip().upper() for t in tickers_input.split(',') if t.strip()]
-        else:
-            tickers = [str(t).strip().upper() for t in tickers_input if str(t).strip()]
+        tickers = normalize_ticker_input(data.get('tickers', ''))
         
         if not tickers:
             return jsonify({'error': 'No tickers provided'}), 400
         
-        # Train separate model for each ticker
-        pipeline_result = get_or_create_model(tickers)
-        
-        if not pipeline_result:
+        payload = prepare_prediction_payload(tickers)
+        if not payload:
             return jsonify({'error': 'Failed to train models or insufficient data'}), 500
         
-        predictions = []
-        all_metrics = []
-        
-        # Check if we have per-ticker results
-        if pipeline_result.get('train_per_ticker') and 'results' in pipeline_result:
-            # Multiple tickers, each with their own model
-            for ticker, result in pipeline_result['results'].items():
-                pred = result['prediction']
-                currency = get_currency_symbol(ticker)
-                current_price = result.get('current_price') or get_current_price(ticker) or 0.0
-                
-                predictions.append({
-                    'ticker': ticker,
-                    'currentPrice': round(current_price, 2),
-                    'estimatedPrice': round(pred.get('estimated_price', current_price), 2) if pred.get('estimated_price') else None,
-                    'direction': pred['prediction'],  # 'UP' or 'DOWN'
-                    'arrow': pred.get('arrow', '↑' if pred['prediction'] == 'UP' else '↓'),
-                    'confidence': round(pred['confidence'] * 100, 1),
-                    'probabilityUp': round(pred['probability_up'] * 100, 1),
-                    'probabilityDown': round(pred['probability_down'] * 100, 1),
-                    'currency': currency,
-                    'isPositive': pred['prediction'] == 'UP',
-                    'hasRealPrediction': True
-                })
-                
-                all_metrics.append({
-                    'ticker': ticker,
-                    'accuracy': round(result['metrics']['test_accuracy'], 4),
-                    'roc_auc': round(result['metrics']['test_roc_auc'], 4)
-                })
-        else:
-            # Single ticker or combined model (legacy format)
-            primary_ticker = pipeline_result.get('primary_ticker', tickers[0])
-            main_prediction = pipeline_result['prediction']
-            currency = get_currency_symbol(primary_ticker)
-            current_price = get_current_price(primary_ticker) or 0.0
-            
-            estimated_price = main_prediction.get('estimated_price') if isinstance(main_prediction, dict) else None
-            
-            predictions.append({
-                'ticker': primary_ticker,
-                'currentPrice': round(current_price, 2),
-                'estimatedPrice': round(estimated_price, 2) if estimated_price else None,
-                'direction': main_prediction['prediction'] if isinstance(main_prediction, dict) else main_prediction,
-                'arrow': main_prediction.get('arrow', '↑' if (main_prediction['prediction'] == 'UP' if isinstance(main_prediction, dict) else False) else '↓'),
-                'confidence': round(main_prediction['confidence'] * 100, 1) if isinstance(main_prediction, dict) else 0,
-                'probabilityUp': round(main_prediction['probability_up'] * 100, 1) if isinstance(main_prediction, dict) else 0,
-                'probabilityDown': round(main_prediction['probability_down'] * 100, 1) if isinstance(main_prediction, dict) else 0,
-                'currency': currency,
-                'isPositive': (main_prediction['prediction'] == 'UP' if isinstance(main_prediction, dict) else False),
-                'hasRealPrediction': True
-            })
-            
-            all_metrics.append({
-                'ticker': primary_ticker,
-                'accuracy': round(pipeline_result['metrics']['test_accuracy'], 4),
-                'roc_auc': round(pipeline_result['metrics']['test_roc_auc'], 4)
-            })
-        
-        if not predictions:
-            return jsonify({'error': 'No predictions could be generated'}), 500
-        
         return jsonify({
-            'predictions': predictions,
-            'metadata': {
-                'models_trained': len(predictions),
-                'per_ticker_models': pipeline_result.get('train_per_ticker', False),
-                'metrics': all_metrics
-            }
+            'predictions': payload['predictions'],
+            'metadata': payload['metadata']
         })
         
     except Exception as e:
@@ -388,12 +585,7 @@ def get_visualizations():
     """Get all visualization charts"""
     try:
         data = request.get_json()
-        tickers_input = data.get('tickers', '')
-        
-        if isinstance(tickers_input, str):
-            tickers = [t.strip().upper() for t in tickers_input.split(',') if t.strip()]
-        else:
-            tickers = [str(t).strip().upper() for t in tickers_input if str(t).strip()]
+        tickers = normalize_ticker_input(data.get('tickers', ''))
         
         if not tickers:
             return jsonify({'error': 'No tickers provided'}), 400
@@ -405,81 +597,91 @@ def get_visualizations():
         
         # Handle per-ticker results (new format)
         if pipeline_result.get('train_per_ticker') and 'results' in pipeline_result:
-            # Use the first ticker's results for visualizations (or primary ticker if single)
-            primary_ticker = tickers[0] if len(tickers) == 1 else tickers[0]
-            if primary_ticker in pipeline_result['results']:
-                result = pipeline_result['results'][primary_ticker]
-                metrics = result['metrics']
-                
-                # Create a compatible structure for visualization functions
-                # Create a mock loader object
-                class MockLoader:
-                    def __init__(self, ticker_df, ticker_name):
-                        self.ticker_df = ticker_df
-                        self.ticker_name = ticker_name
-                        self.tickers = [ticker_name]
-                    
-                    def get_ticker_data(self, ticker):
-                        if ticker == self.ticker_name:
-                            return self.ticker_df
-                        return None
-                
-                mock_loader = MockLoader(result['ticker_df'], primary_ticker)
-                
-                viz_result = {
-                    'classifier': result['classifier'],
-                    'X_test': result['X_test'],
-                    'y_test': result['y_test'],
-                    'tickers': [primary_ticker],
-                    'loader': mock_loader,
-                    'raw_data': result['raw_data'],
-                    'ticker_df': result['ticker_df'],  # For returns distribution
-                    'ticker': primary_ticker,  # For returns distribution
-                    'primary_ticker': primary_ticker,  # For returns distribution
-                    'combined_df': result['ticker_df']  # Alias for compatibility
-                }
-                
-                visualizations = {
-                    'confusionMatrix': create_confusion_matrix_image(metrics['confusion_matrix']),
-                    'rocCurve': create_roc_curve_image(viz_result),
-                    'featureImportance': create_feature_importance_image(viz_result),
-                    'priceHistory': create_price_history_chart(viz_result),
-                    'returnsDistribution': create_returns_distribution_chart(viz_result),
-                    'metrics': {
-                        'train_accuracy': round(metrics['train_accuracy'], 4),
-                        'test_accuracy': round(metrics['test_accuracy'], 4),
-                        'test_f1': round(metrics['test_f1'], 4),
-                        'test_roc_auc': round(metrics['test_roc_auc'], 4),
-                        'confusion_matrix': metrics['confusion_matrix'].tolist()
-                    }
-                }
-            else:
-                return jsonify({'error': 'No results found for primary ticker'}), 500
+            primary_ticker = next((t for t in tickers if t in pipeline_result['results']), None)
+            if not primary_ticker:
+                return jsonify({'error': 'No results found for requested tickers'}), 500
+            result = pipeline_result['results'][primary_ticker]
+            metrics = result['metrics']
+            visualizations = build_visualization_bundle(primary_ticker, result, metrics, combined=False, as_data_uri=True)
         else:
             # Handle legacy format (single combined model)
             metrics = pipeline_result.get('metrics', {})
             if not metrics:
                 return jsonify({'error': 'No metrics found in pipeline result'}), 500
-            
-            visualizations = {
-                'confusionMatrix': create_confusion_matrix_image(metrics['confusion_matrix']),
-                'rocCurve': create_roc_curve_image(pipeline_result),
-                'featureImportance': create_feature_importance_image(pipeline_result),
-                'priceHistory': create_price_history_chart(pipeline_result),
-                'returnsDistribution': create_returns_distribution_chart(pipeline_result),
-                'metrics': {
-                    'train_accuracy': round(metrics['train_accuracy'], 4),
-                    'test_accuracy': round(metrics['test_accuracy'], 4),
-                    'test_f1': round(metrics['test_f1'], 4),
-                    'test_roc_auc': round(metrics['test_roc_auc'], 4),
-                    'confusion_matrix': metrics['confusion_matrix'].tolist()
-                }
-            }
+            primary_ticker = pipeline_result.get('primary_ticker', tickers[0])
+            visualizations = build_visualization_bundle(primary_ticker, pipeline_result, metrics, combined=True, as_data_uri=True)
         
         return jsonify(visualizations)
         
     except Exception as e:
         print(f"Visualization error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/download-report', methods=['POST'])
+def download_report():
+    """Download predictions, metrics, and visualizations as a zip archive"""
+    try:
+        data = request.get_json()
+        tickers = normalize_ticker_input(data.get('tickers', ''))
+        if not tickers:
+            return jsonify({'error': 'No tickers provided'}), 400
+        
+        payload = prepare_prediction_payload(tickers)
+        if not payload:
+            return jsonify({'error': 'Failed to generate report'}), 500
+        
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED) as zip_file:
+            predictions_df = pd.DataFrame(payload['predictions'])
+            zip_file.writestr('predictions.csv', predictions_df.to_csv(index=False))
+            
+            metrics_list = payload['metadata'].get('metrics') or []
+            if metrics_list:
+                metrics_df = pd.DataFrame(metrics_list)
+                zip_file.writestr('metrics.csv', metrics_df.to_csv(index=False))
+            
+            summary_lines = [
+                "Market Movement Classifier Report",
+                f"Tickers: {', '.join(tickers)}",
+                f"Generated: {datetime.utcnow().isoformat()}Z",
+                f"Models trained: {payload['metadata']['models_trained']}",
+                f"Average test accuracy: {payload['metadata']['model_accuracy']:.2%}",
+                "",
+                "Files:",
+                "- predictions.csv: Enriched per-ticker predictions",
+                "- metrics.csv: Test/validation metrics per ticker",
+                "- visualizations/<ticker>/: PNG charts for each ticker",
+                "",
+                "Use cases:",
+                "1. Share the zip with stakeholders",
+                "2. Plug CSV into custom dashboards",
+                "3. Inspect PNG charts for qualitative assessment"
+            ]
+            zip_file.writestr('README.txt', "\n".join(summary_lines))
+            
+            pipeline_result = payload['pipeline_result']
+            if pipeline_result.get('train_per_ticker') and 'results' in pipeline_result:
+                results_map = pipeline_result['results']
+                for ticker in tickers:
+                    if ticker not in results_map:
+                        continue
+                    result = results_map[ticker]
+                    viz_bundle = build_visualization_bundle(ticker, result, result['metrics'], combined=False, as_data_uri=False)
+                    write_visualizations_to_zip(zip_file, ticker, viz_bundle)
+            else:
+                ticker = payload['metadata'].get('primary_ticker', tickers[0])
+                metrics = pipeline_result.get('metrics', {})
+                if metrics:
+                    viz_bundle = build_visualization_bundle(ticker, pipeline_result, metrics, combined=True, as_data_uri=False)
+                    write_visualizations_to_zip(zip_file, ticker, viz_bundle)
+        
+        buffer.seek(0)
+        filename = f"market-report-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.zip"
+        return send_file(buffer, mimetype='application/zip', as_attachment=True, download_name=filename)
+    except Exception as e:
+        print(f"Report download error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
