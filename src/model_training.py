@@ -23,6 +23,8 @@ class XGBoostMarketClassifier:
         self.feature_names = None
         self.selected_features = None
         self.metrics = {}
+        self.training_data_ = None
+        self.validation_data_ = None
         
     def prepare_data(self, df, target_col='target', test_size=0.2):
         """Prepare train/test split with proper scaling and cleaning"""
@@ -99,6 +101,8 @@ class XGBoostMarketClassifier:
         if use_tuning and len(X_train) > 100:
             # Use hyperparameter tuning for better performance
             print("  Training with hyperparameter tuning...")
+            self.training_data_ = (X_train, y_train)
+            self.validation_data_ = None
             return self.train_with_tuning(X_train, y_train, n_iter=30)
         
         # Use optimized default parameters
@@ -122,8 +126,34 @@ class XGBoostMarketClassifier:
         
         self.model = xgb.XGBClassifier(**params)
         
-        print("  Training XGBoost model...")
-        self.model.fit(X_train, y_train, verbose=False)
+        # Hold out a validation chunk from the tail of the training window to avoid leakage
+        validation_fraction = 0.15 if len(X_train) >= 80 else 0.1
+        val_size = max(20, int(len(X_train) * validation_fraction))
+        if val_size >= len(X_train):
+            val_size = max(1, len(X_train) // 5)
+        train_size = len(X_train) - val_size
+        if train_size <= 0:
+            train_size = len(X_train) - 1
+            val_size = 1
+        
+        X_fit, y_fit = X_train[:train_size], y_train[:train_size]
+        X_val, y_val = X_train[train_size:], y_train[train_size:]
+        self.training_data_ = (X_fit, y_fit)
+        self.validation_data_ = (X_val, y_val) if len(X_val) else None
+        
+        print("  Training XGBoost model with early stopping...")
+        eval_set = [(X_fit, y_fit)]
+        fit_params = {'verbose': False}
+        if len(X_val):
+            eval_set.append((X_val, y_val))
+            fit_params.update({
+                'eval_set': eval_set,
+                'early_stopping_rounds': 30
+            })
+        else:
+            fit_params['eval_set'] = eval_set
+        
+        self.model.fit(X_fit, y_fit, **fit_params)
         print("  ✓ Training complete!")
         
         return self.model
@@ -171,6 +201,7 @@ class XGBoostMarketClassifier:
         random_search.fit(X_train, y_train)
         
         self.model = random_search.best_estimator_
+        self.validation_data_ = None
         print(f"  ✓ Best CV ROC-AUC: {random_search.best_score_:.4f}")
         print(f"  Best params: {random_search.best_params_}")
         
@@ -234,15 +265,25 @@ class XGBoostMarketClassifier:
     
     def evaluate(self, X_train, X_test, y_train, y_test):
         """Comprehensive model evaluation"""
-        y_train_pred = self.model.predict(X_train)
+        train_features = X_train
+        train_target = y_train
+        if self.training_data_ is not None:
+            train_features, train_target = self.training_data_
+        y_train_pred = self.model.predict(train_features)
         y_test_pred = self.model.predict(X_test)
         y_test_proba = self.model.predict_proba(X_test)[:, 1]
         
         # Calculate additional metrics
         from sklearn.metrics import precision_score, recall_score
+        val_accuracy = None
+        if self.validation_data_ is not None:
+            X_val, y_val = self.validation_data_
+            if len(X_val):
+                val_preds = self.model.predict(X_val)
+                val_accuracy = accuracy_score(y_val, val_preds)
         
         self.metrics = {
-            'train_accuracy': accuracy_score(y_train, y_train_pred),
+            'train_accuracy': accuracy_score(train_target, y_train_pred),
             'test_accuracy': accuracy_score(y_test, y_test_pred),
             'test_f1': f1_score(y_test, y_test_pred),
             'test_precision': precision_score(y_test, y_test_pred, zero_division=0),
@@ -251,6 +292,8 @@ class XGBoostMarketClassifier:
             'confusion_matrix': confusion_matrix(y_test, y_test_pred),
             'classification_report': classification_report(y_test, y_test_pred)
         }
+        if val_accuracy is not None:
+            self.metrics['val_accuracy'] = val_accuracy
         
         return self.metrics
     
