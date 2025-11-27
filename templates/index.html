@@ -16,25 +16,30 @@
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
+            background: #FFFFFF;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            border: 2px solid #000000;
         }
 
         .dark .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #000000;
+            border: 2px solid #FFFFFF;
         }
 
         .loading-spinner {
-            border: 3px solid rgba(59, 130, 246, 0.3);
-            border-top: 3px solid #3b82f6;
+            border: 3px solid #000000;
+            border-top: 3px solid #FFFFFF;
             border-radius: 50%;
             width: 24px;
             height: 24px;
             animation: spin 1s linear infinite;
             display: inline-block;
+        }
+
+        .dark .loading-spinner {
+            border: 3px solid #FFFFFF;
+            border-top: 3px solid #000000;
         }
 
         @keyframes spin {
@@ -70,7 +75,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.9);
             z-index: 1000;
             overflow-y: auto;
             backdrop-filter: blur(4px);
@@ -84,18 +89,21 @@
         }
 
         .modal-content {
-            background: white;
+            background: #FFFFFF;
+            border: 3px solid #000000;
             border-radius: 1rem;
             max-width: 1000px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            color: #000000;
         }
 
         .dark .modal-content {
-            background: #1e293b;
-            color: #f1f5f9;
+            background: #000000;
+            border: 3px solid #FFFFFF;
+            color: #FFFFFF;
         }
 
         /* Custom Scrollbar */
@@ -108,12 +116,14 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: #000000;
             border-radius: 4px;
+            border: 1px solid #FFFFFF;
         }
 
         .dark ::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #FFFFFF;
+            border: 1px solid #000000;
         }
     </style>
 
@@ -123,10 +133,8 @@
             theme: {
                 extend: {
                     colors: {
-                        slate: {
-                            850: '#172033',
-                            900: '#0f172a',
-                        }
+                        black: '#000000',
+                        white: '#FFFFFF',
                     },
                     fontFamily: {
                         sans: ['Outfit', 'sans-serif'],
@@ -183,7 +191,7 @@
             grid.innerHTML = `
             <div class="col-span-2 md:col-span-4 text-center p-8">
                 <div class="loading-spinner mx-auto mb-2"></div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">AI analyzing market trends...</p>
+                <p class="text-sm text-black dark:text-white">AI analyzing market trends...</p>
             </div>
             `;
             try {
@@ -206,23 +214,23 @@
             if (!grid) return;
             grid.innerHTML = popularStocksData.map((stock, index) => {
                 const isUp = stock.prediction === 'UP';
-                const colorClass = isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-                const bgClass = isUp ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20';
+                const colorClass = isUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                const bgClass = isUp ? 'bg-green-50 dark:bg-green-900/30 border-2 border-green-600 dark:border-green-400' : 'bg-red-50 dark:bg-red-900/30 border-2 border-red-600 dark:border-red-400';
                 const arrow = isUp ? '↑' : '↓';
 
                 return `
                 <div onclick="quickPredict('${stock.ticker}')" 
                     class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md cursor-pointer transition-all hover:-translate-y-1 animate-fade-in" style="animation-delay: ${index * 100}ms">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-lg font-bold text-gray-900 dark:text-white">${stock.ticker.replace(/\.NS$/, '')}</div>
+                        <div class="text-lg font-bold text-black dark:text-white">${stock.ticker.replace(/\.NS$/, '')}</div>
                         <div class="px-2 py-1 rounded-full text-xs font-bold ${bgClass} ${colorClass}">
                             ${stock.prediction} ${arrow}
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">${stock.currency}${stock.currentPrice.toFixed(2)}</div>
+                    <div class="text-2xl font-bold text-black dark:text-white mb-1">${stock.currency}${stock.currentPrice.toFixed(2)}</div>
                     <div class="flex items-center justify-between">
                         <div class="${colorClass} text-sm font-medium">${stock.changePercent > 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%</div>
-                        <div class="text-xs text-gray-400 dark:text-gray-500">${stock.confidence}% conf.</div>
+                        <div class="text-xs text-black dark:text-white">${stock.confidence}% conf.</div>
                     </div>
                 </div>
             `;
@@ -234,7 +242,7 @@
             if (!grid) return;
             // Fallback content...
             grid.innerHTML = `
-                <div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-4">
+                <div class="col-span-full text-center text-black dark:text-white py-4">
                     Unable to load popular stocks. Try searching manually.
                 </div>
             `;
@@ -259,10 +267,10 @@
             statusEl.textContent = message;
             statusEl.className = 'text-xs font-medium transition-colors duration-300';
             const toneMap = {
-                loading: 'text-blue-500 dark:text-blue-400',
-                success: 'text-emerald-500 dark:text-emerald-400',
-                error: 'text-rose-500 dark:text-rose-400',
-                muted: 'text-gray-400 dark:text-gray-500'
+                loading: 'text-black dark:text-white',
+                success: 'text-black dark:text-white',
+                error: 'text-black dark:text-white',
+                muted: 'text-black dark:text-white'
             };
             statusEl.classList.add(...(toneMap[tone] || toneMap.muted).split(' '));
         }
@@ -294,22 +302,22 @@
         }
 
         function getMoodLabel(score) {
-            if (score > 0.35) return { label: 'Bullish Buzz', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
-            if (score < -0.35) return { label: 'Bearish Buzz', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
-            return { label: 'Neutral Pulse', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' };
+            if (score > 0.35) return { label: 'Bullish Buzz', color: 'bg-white text-black dark:bg-black dark:text-white border-2 border-black dark:border-white' };
+            if (score < -0.35) return { label: 'Bearish Buzz', color: 'bg-black text-white dark:bg-white dark:text-black border-2 border-white dark:border-black' };
+            return { label: 'Neutral Pulse', color: 'bg-white text-black dark:bg-black dark:text-white border-2 border-black dark:border-white' };
         }
 
         function getDivergenceBadge(directionScore, moodScore) {
             const divergence = directionScore - moodScore;
-            if (divergence > 0.8) return { label: 'AI Bullish vs Bearish News', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', divergence };
-            if (divergence < -0.8) return { label: 'AI Bearish vs Bullish News', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400', divergence };
-            return { label: 'Signals Aligned', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', divergence };
+            if (divergence > 0.8) return { label: 'AI Bullish vs Bearish News', color: 'bg-white text-black dark:bg-black dark:text-white border-2 border-black dark:border-white', divergence };
+            if (divergence < -0.8) return { label: 'AI Bearish vs Bullish News', color: 'bg-black text-white dark:bg-white dark:text-black border-2 border-white dark:border-black', divergence };
+            return { label: 'Signals Aligned', color: 'bg-white text-black dark:bg-black dark:text-white border-2 border-black dark:border-white', divergence };
         }
 
         function createStockCard(stock, index) {
             const isUp = stock.isPositive;
-            const colorClass = isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-            const bgClass = isUp ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20';
+            const colorClass = isUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+            const bgClass = isUp ? 'bg-green-50 dark:bg-green-900/30 border-2 border-green-600 dark:border-green-400' : 'bg-red-50 dark:bg-red-900/30 border-2 border-red-600 dark:border-red-400';
             const directionArrow = stock.arrow || (isUp ? '↑' : '↓');
 
             return `
@@ -317,22 +325,22 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <div class="flex items-center gap-3">
-                                <h3 class="text-3xl font-bold text-gray-900 dark:text-white">${stock.ticker}</h3>
+                                <h3 class="text-3xl font-bold text-black dark:text-white">${stock.ticker}</h3>
                                 ${stock.hasRealPrediction ?
-                    '<span class="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold">ML Prediction</span>' :
-                    '<span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-xs font-semibold">Limited Data</span>'}
+                    '<span class="px-2 py-0.5 rounded-full bg-white dark:bg-black text-black dark:text-white border-2 border-black dark:border-white text-xs font-semibold">ML Prediction</span>' :
+                    '<span class="px-2 py-0.5 rounded-full bg-black dark:bg-white text-white dark:text-black border-2 border-white dark:border-black text-xs font-semibold">Limited Data</span>'}
                             </div>
-                            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                Current: <span class="font-semibold text-gray-900 dark:text-gray-200">${formatCurrency(stock.currentPrice, stock.currency || '$')}</span>
+                            <div class="text-sm text-black dark:text-white mt-1">
+                                Current: <span class="font-semibold text-black dark:text-white">${formatCurrency(stock.currentPrice, stock.currency || '$')}</span>
                             </div>
                         </div>
                         
                         <div class="flex items-center gap-4">
                              <div class="text-right">
-                                <div class="text-sm text-gray-500 dark:text-gray-400">Target</div>
+                                <div class="text-sm text-black dark:text-white">Target</div>
                                 <div class="text-xl font-bold ${colorClass}">${stock.estimatedPrice ? formatCurrency(stock.estimatedPrice, stock.currency || '$') : 'N/A'}</div>
                              </div>
-                             <div class="h-12 w-px bg-gray-200 dark:bg-gray-700 mx-2 hidden md:block"></div>
+                             <div class="h-12 w-px bg-black dark:bg-white mx-2 hidden md:block"></div>
                              <div class="flex flex-col items-center justify-center ${bgClass} px-5 py-2 rounded-xl min-w-[100px]">
                                 <span class="text-2xl font-bold ${colorClass}">${directionArrow} ${stock.direction || (isUp ? 'UP' : 'DOWN')}</span>
                                 <span class="text-xs font-medium ${colorClass} opacity-80">${stock.confidence}% Conf.</span>
@@ -341,35 +349,35 @@
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Exp. Change</div>
+                        <div class="p-3 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl">
+                            <div class="text-xs text-black dark:text-white mb-1">Exp. Change</div>
                             <div class="font-semibold ${colorClass}">${stock.expectedChangePct ? (stock.expectedChangePct > 0 ? '+' : '') + stock.expectedChangePct + '%' : 'N/A'}</div>
                         </div>
-                        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">P/E Ratio</div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-200">${stock.peRatio ? stock.peRatio.toFixed(2) : 'N/A'}</div>
+                        <div class="p-3 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl">
+                            <div class="text-xs text-black dark:text-white mb-1">P/E Ratio</div>
+                            <div class="font-semibold text-black dark:text-white">${stock.peRatio ? stock.peRatio.toFixed(2) : 'N/A'}</div>
                         </div>
-                        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Div Yield</div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-200">${stock.dividendYield ? stock.dividendYield.toFixed(2) + '%' : 'N/A'}</div>
+                        <div class="p-3 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl">
+                            <div class="text-xs text-black dark:text-white mb-1">Div Yield</div>
+                            <div class="font-semibold text-black dark:text-white">${stock.dividendYield ? stock.dividendYield.toFixed(2) + '%' : 'N/A'}</div>
                         </div>
-                        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Risk Level</div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-200">${stock.riskLevel || 'Unknown'}</div>
+                        <div class="p-3 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl">
+                            <div class="text-xs text-black dark:text-white mb-1">Risk Level</div>
+                            <div class="font-semibold text-black dark:text-white">${stock.riskLevel || 'Unknown'}</div>
                         </div>
                     </div>
 
-                    <div class="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 relative overflow-hidden">
+                    <div class="bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl p-4 relative overflow-hidden">
                         <div class="absolute top-0 right-0 p-4 opacity-10">
-                            <i data-lucide="lightbulb" class="w-16 h-16"></i>
+                            <i data-lucide="lightbulb" class="w-16 h-16 text-black dark:text-white"></i>
                         </div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">AI Recommendation</span>
-                                <span class="text-sm font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-700 px-3 py-1 rounded-full shadow-sm border border-gray-100 dark:border-gray-600">${stock.recommendation || 'HOLD'}</span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-black dark:text-white">AI Recommendation</span>
+                                <span class="text-sm font-bold text-black dark:text-white bg-white dark:bg-black px-3 py-1 rounded-full shadow-sm border-2 border-black dark:border-white">${stock.recommendation || 'HOLD'}</span>
                             </div>
-                            <p class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">${stock.rationale || 'No rationale available.'}</p>
-                            ${stock.riskNote ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> ${stock.riskNote}</p>` : ''}
+                            <p class="text-black dark:text-white text-sm leading-relaxed">${stock.rationale || 'No rationale available.'}</p>
+                            ${stock.riskNote ? `<p class="text-xs text-black dark:text-white mt-2 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> ${stock.riskNote}</p>` : ''}
                         </div>
                     </div>
                 </div>
@@ -389,11 +397,11 @@
                 if (popularSection) popularSection.classList.remove('hidden');
                 container.innerHTML = `
                     <div class="text-center py-12 animate-fade-in">
-                        <div class="bg-gray-100 dark:bg-gray-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                            <i data-lucide="search" class="w-8 h-8 text-gray-400"></i>
+                        <div class="bg-white dark:bg-black border-2 border-black dark:border-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="search" class="w-8 h-8 text-black dark:text-white"></i>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">No predictions yet</h3>
-                        <p class="text-gray-500 dark:text-gray-400">Search for a ticker above to get started.</p>
+                        <h3 class="text-lg font-semibold text-black dark:text-white mb-1">No predictions yet</h3>
+                        <p class="text-black dark:text-white">Search for a ticker above to get started.</p>
                     </div>`;
                 renderSignalRadar();
                 updateWhatIfOutput();
@@ -408,14 +416,14 @@
                 container.innerHTML = `
                     <div class="flex flex-col items-center justify-center h-full text-center p-6 min-h-[200px]">
                         <div class="relative w-20 h-20 mb-4 opacity-30">
-                            <div class="absolute inset-0 border-2 border-blue-500 rounded-full animate-ping"></div>
-                            <div class="absolute inset-2 border-2 border-purple-500 rounded-full"></div>
+                            <div class="absolute inset-0 border-2 border-black dark:border-white rounded-full animate-ping"></div>
+                            <div class="absolute inset-2 border-2 border-black dark:border-white rounded-full"></div>
                             <div class="absolute inset-0 flex items-center justify-center">
-                                <i data-lucide="radar" class="w-8 h-8 text-gray-500 dark:text-gray-400"></i>
+                                <i data-lucide="radar" class="w-8 h-8 text-black dark:text-white"></i>
                             </div>
                         </div>
-                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Signal Radar Standby</h4>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 max-w-[200px] mx-auto">
+                        <h4 class="text-sm font-semibold text-black dark:text-white mb-1">Signal Radar Standby</h4>
+                        <p class="text-xs text-black dark:text-white max-w-[200px] mx-auto">
                             Ready to analyze narrative divergence. Enter a ticker to activate.
                         </p>
                     </div>
@@ -430,10 +438,10 @@
                 const directionScore = stock.isPositive ? 1 : -1;
                 const divergenceInfo = getDivergenceBadge(directionScore, moodScore);
                 return `
-                    <div class="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                    <div class="flex items-center justify-between py-3 border-b-2 border-black dark:border-white last:border-0">
                         <div>
-                            <div class="font-bold text-gray-800 dark:text-gray-200">${stock.ticker}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">${stock.recommendation || stock.direction}</div>
+                            <div class="font-bold text-black dark:text-white">${stock.ticker}</div>
+                            <div class="text-xs text-black dark:text-white">${stock.recommendation || stock.direction}</div>
                         </div>
                         <div class="flex flex-col items-end gap-1">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${moodColor}">${moodLabel}</span>
@@ -445,11 +453,11 @@
 
             container.innerHTML = `
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i data-lucide="activity" class="w-4 h-4 text-blue-500"></i> Narrative Radar
+                    <h3 class="font-semibold text-black dark:text-white flex items-center gap-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-black dark:text-white"></i> Narrative Radar
                     </h3>
                 </div>
-                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div class="divide-y-2 divide-black dark:divide-white">
                     ${rows}
                 </div>
             `;
@@ -463,8 +471,8 @@
             const tickerEntries = Object.entries(newsByTicker);
             if (!tickerEntries.length) {
                 container.innerHTML = `
-                    <div class="text-center p-8 text-gray-500 dark:text-gray-400">
-                        <i data-lucide="newspaper" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                    <div class="text-center p-8 text-black dark:text-white">
+                        <i data-lucide="newspaper" class="w-8 h-8 mx-auto mb-2 opacity-50 text-black dark:text-white"></i>
                         <p class="text-sm">Headlines will appear here after analysis.</p>
                     </div>
                 `;
@@ -479,17 +487,17 @@
                 return `
                     <div class="mb-4 last:mb-0">
                         <div class="flex items-center justify-between mb-2">
-                            <h4 class="font-bold text-gray-800 dark:text-gray-200 text-sm">${ticker} Headlines</h4>
+                            <h4 class="font-bold text-black dark:text-white text-sm">${ticker} Headlines</h4>
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${color}">${label}</span>
                         </div>
                         <div class="space-y-2">
                             ${topArticles.map(article => `
                                 <a href="${article.url}" target="_blank" rel="noopener noreferrer" 
-                                   class="block p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition group border border-transparent hover:border-blue-100 dark:hover:border-blue-800">
-                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2">
+                                   class="block p-3 rounded-lg bg-white dark:bg-black border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white transition group">
+                                    <p class="text-sm font-medium text-black dark:text-white group-hover:text-white dark:group-hover:text-black line-clamp-2">
                                         ${article.title}
                                     </p>
-                                    <div class="flex items-center gap-2 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center gap-2 mt-1.5 text-xs text-black dark:text-white">
                                         <span>${article.site || 'Source'}</span>
                                         <span>•</span>
                                         <span>${formatRelativeTime(article.published)}</span>
@@ -519,17 +527,17 @@
             latestMacroRisk = macroRisk;
 
             const riskBadge = macroRisk && macroRisk.macroRiskLabel
-                ? `<span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${macroRisk.macroRiskColor || 'bg-slate-100 text-slate-700'}">${macroRisk.macroRiskLabel}</span>`
+                ? `<span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-white dark:bg-black text-black dark:text-white border-2 border-black dark:border-white">${macroRisk.macroRiskLabel}</span>`
                 : '';
 
             if (!events.length) {
                 container.innerHTML = `
                     <div class="flex flex-col items-center justify-center h-full text-center p-6 min-h-[200px]">
-                        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
-                            <i data-lucide="globe" class="w-8 h-8 text-gray-400 dark:text-gray-500"></i>
+                        <div class="w-16 h-16 bg-white dark:bg-black border-2 border-black dark:border-white rounded-full flex items-center justify-center mb-3">
+                            <i data-lucide="globe" class="w-8 h-8 text-black dark:text-white"></i>
                         </div>
-                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Global Market Context</h4>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                        <h4 class="text-sm font-semibold text-black dark:text-white mb-1">Global Market Context</h4>
+                        <p class="text-xs text-black dark:text-white">
                             Scanning economic calendar...
                         </p>
                     </div>
@@ -540,20 +548,20 @@
 
             container.innerHTML = `
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i data-lucide="globe" class="w-4 h-4 text-purple-500"></i> Macro Context
+                    <h3 class="font-semibold text-black dark:text-white flex items-center gap-2">
+                        <i data-lucide="globe" class="w-4 h-4 text-black dark:text-white"></i> Macro Context
                     </h3>
                     ${riskBadge}
                 </div>
                 <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     ${events.map(event => `
-                        <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border-l-2 ${event.shockAlert ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}">
+                        <div class="p-3 rounded-lg bg-white dark:bg-black border-2 ${event.shockAlert ? 'border-black dark:border-white' : 'border-black dark:border-white'}">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400">${event.country || 'Global'}</span>
-                                ${event.shockAlert ? '<span class="text-[10px] font-bold text-red-500 flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Shock</span>' : ''}
+                                <span class="text-[10px] font-bold uppercase text-black dark:text-white">${event.country || 'Global'}</span>
+                                ${event.shockAlert ? '<span class="text-[10px] font-bold text-black dark:text-white flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Shock</span>' : ''}
                             </div>
-                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">${event.event}</p>
-                            <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <p class="text-sm font-medium text-black dark:text-white">${event.event}</p>
+                            <div class="flex justify-between mt-2 text-xs text-black dark:text-white">
                                 <span>${event.datetime || 'TBD'}</span>
                                 <span class="font-mono">Fcst: ${event.forecast ?? '-'}</span>
                             </div>
@@ -567,7 +575,7 @@
             const container = document.getElementById('what-if-output');
             if (!container) return;
             if (!stockData.length) {
-                container.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400 text-center py-2">Run predictions to activate.</p>';
+                container.innerHTML = '<p class="text-xs text-black dark:text-white text-center py-2">Run predictions to activate.</p>';
                 return;
             }
             const lines = stockData.map(stock => {
@@ -579,8 +587,8 @@
                 const delta = adjusted - stock.confidence;
                 return `
                     <div class="flex justify-between items-center text-sm py-1">
-                        <span class="font-medium text-gray-700 dark:text-gray-300">${stock.ticker}</span>
-                        <span class="font-mono ${delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+                        <span class="font-medium text-black dark:text-white">${stock.ticker}</span>
+                        <span class="font-mono ${delta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
                             ${adjusted.toFixed(1)}% (${delta >= 0 ? '+' : ''}${delta.toFixed(1)})
                         </span>
                     </div>`;
@@ -616,8 +624,8 @@
             container.innerHTML = `
                 <div class="text-center p-12 animate-fade-in">
                     <div class="loading-spinner mx-auto mb-4"></div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analyzing Market Data</h3>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm max-w-xs mx-auto">
+                    <h3 class="text-lg font-semibold text-black dark:text-white mb-2">Analyzing Market Data</h3>
+                    <p class="text-black dark:text-white text-sm max-w-xs mx-auto">
                         Fetching 2 years of history, engineering features, and running XGBoost models...
                     </p>
                 </div>
@@ -630,12 +638,12 @@
 
             container.innerHTML = `
                 <div class="text-center p-8 animate-fade-in">
-                    <div class="bg-rose-100 dark:bg-rose-900/30 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i data-lucide="alert-circle" class="w-8 h-8 text-rose-500 dark:text-rose-400"></i>
+                    <div class="bg-white dark:bg-black border-2 border-black dark:border-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="alert-circle" class="w-8 h-8 text-black dark:text-white"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analysis Failed</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">${message}</p>
-                    <button onclick="location.reload()" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Reload Page</button>
+                    <h3 class="text-lg font-semibold text-black dark:text-white mb-2">Analysis Failed</h3>
+                    <p class="text-black dark:text-white text-sm mb-4">${message}</p>
+                    <button onclick="location.reload()" class="text-black dark:text-white hover:underline text-sm border-2 border-black dark:border-white px-4 py-2 rounded">Reload Page</button>
                 </div>
             `;
             if (window.lucide) lucide.createIcons();
@@ -647,15 +655,15 @@
             if (!query) {
                 const status = document.getElementById('search-status');
                 status.textContent = 'Please enter a ticker symbol.';
-                status.classList.add('text-rose-500');
+                status.classList.add('text-black', 'dark:text-white');
                 return;
             }
 
             currentTickers = query;
             const status = document.getElementById('search-status');
             status.textContent = `Analyzing ${query}...`;
-            status.classList.remove('text-rose-500', 'text-emerald-500');
-            status.classList.add('text-blue-500');
+            status.classList.remove('text-black', 'dark:text-white');
+            status.classList.add('text-black', 'dark:text-white');
 
             showLoading();
 
@@ -688,8 +696,8 @@
                 renderNewsSection();
 
                 status.textContent = `Analysis complete for ${stockData.length} ticker(s).`;
-                status.classList.remove('text-blue-500');
-                status.classList.add('text-emerald-500');
+                status.classList.remove('text-black', 'dark:text-white');
+                status.classList.add('text-black', 'dark:text-white');
 
                 document.getElementById('view-viz-btn').classList.remove('hidden');
                 document.getElementById('download-report-btn').classList.remove('hidden');
@@ -700,8 +708,8 @@
                 console.error('Prediction error:', error);
                 showError(error.message);
                 status.textContent = 'Analysis failed.';
-                status.classList.remove('text-blue-500');
-                status.classList.add('text-rose-500');
+                status.classList.remove('text-black', 'dark:text-white');
+                status.classList.add('text-black', 'dark:text-white');
             }
         }
 
@@ -713,7 +721,7 @@
             modalContent.innerHTML = `
                 <div class="text-center p-12">
                     <div class="loading-spinner mx-auto mb-4"></div>
-                    <p class="text-gray-500 dark:text-gray-400">Generating charts...</p>
+                    <p class="text-black dark:text-white">Generating charts...</p>
                 </div>
             `;
 
@@ -730,22 +738,22 @@
                 modalContent.innerHTML = `
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Model Diagnostics</h2>
-                            <button onclick="closeModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
-                                <i data-lucide="x" class="w-6 h-6 text-gray-500"></i>
+                            <h2 class="text-2xl font-bold text-black dark:text-white">Model Diagnostics</h2>
+                            <button onclick="closeModal()" class="p-2 hover:bg-black dark:hover:bg-white rounded-full transition border-2 border-black dark:border-white">
+                                <i data-lucide="x" class="w-6 h-6 text-black dark:text-white"></i>
                             </button>
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                             ${[
-                        { label: 'Train Acc', value: data.metrics.train_accuracy, color: 'blue' },
-                        { label: 'Test Acc', value: data.metrics.test_accuracy, color: 'emerald' },
-                        { label: 'F1 Score', value: data.metrics.test_f1, color: 'purple' },
-                        { label: 'ROC-AUC', value: data.metrics.test_roc_auc, color: 'amber', isRaw: true }
+                        { label: 'Train Acc', value: data.metrics.train_accuracy },
+                        { label: 'Test Acc', value: data.metrics.test_accuracy },
+                        { label: 'F1 Score', value: data.metrics.test_f1 },
+                        { label: 'ROC-AUC', value: data.metrics.test_roc_auc, isRaw: true }
                     ].map(m => `
-                                <div class="bg-${m.color}-50 dark:bg-${m.color}-900/20 p-4 rounded-xl text-center">
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">${m.label}</div>
-                                    <div class="text-xl font-bold text-${m.color}-600 dark:text-${m.color}-400">
+                                <div class="bg-white dark:bg-black border-2 border-black dark:border-white p-4 rounded-xl text-center">
+                                    <div class="text-xs text-black dark:text-white mb-1 uppercase tracking-wide">${m.label}</div>
+                                    <div class="text-xl font-bold text-black dark:text-white">
                                         ${m.isRaw ? m.value.toFixed(3) : (m.value * 100).toFixed(1) + '%'}
                                     </div>
                                 </div>
@@ -760,10 +768,10 @@
                         { title: 'Feature Importance', src: data.featureImportance, desc: 'Top factors driving the model.' },
                         { title: 'Returns Distribution', src: data.returnsDistribution, desc: 'Daily return frequency.' }
                     ].map(chart => `
-                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">${chart.title}</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">${chart.desc}</p>
-                                    <img src="${chart.src}" class="w-full rounded-lg shadow-sm bg-white" alt="${chart.title}">
+                                <div class="bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl p-4">
+                                    <h3 class="text-lg font-semibold text-black dark:text-white mb-2">${chart.title}</h3>
+                                    <p class="text-sm text-black dark:text-white mb-4">${chart.desc}</p>
+                                    <img src="${chart.src}" class="w-full rounded-lg shadow-sm bg-white border-2 border-black dark:border-white" alt="${chart.title}">
                                 </div>
                             `).join('')}
                         </div>
@@ -773,8 +781,8 @@
             } catch (error) {
                 modalContent.innerHTML = `
                     <div class="p-8 text-center">
-                        <p class="text-rose-500 mb-4">Error loading charts.</p>
-                        <button onclick="closeModal()" class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">Close</button>
+                        <p class="text-black dark:text-white mb-4">Error loading charts.</p>
+                        <button onclick="closeModal()" class="bg-white dark:bg-black border-2 border-black dark:border-white text-black dark:text-white px-4 py-2 rounded-lg">Close</button>
                     </div>
                 `;
             }
@@ -837,7 +845,7 @@
     </script>
 </head>
 
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen">
+<body class="bg-white dark:bg-black text-black dark:text-white min-h-screen">
 
     <div class="max-w-5xl mx-auto p-4 md:p-6">
 
@@ -845,13 +853,13 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div class="flex items-center gap-3">
                 <div
-                    class="bg-gradient-to-tr from-blue-600 to-purple-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
-                    <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                    class="bg-black dark:bg-white border-2 border-white dark:border-black p-2.5 rounded-xl">
+                    <i data-lucide="trending-up" class="w-6 h-6 text-white dark:text-black"></i>
                 </div>
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight">Market<span
-                            class="text-blue-600 dark:text-blue-400">Classifier</span></h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide">AI-POWERED PREDICTIVE
+                            class="text-black dark:text-white">Classifier</span></h1>
+                    <p class="text-xs text-black dark:text-white font-medium tracking-wide">AI-POWERED PREDICTIVE
                         ANALYTICS</p>
                 </div>
             </div>
@@ -860,19 +868,19 @@
                 <div class="relative flex-1 md:w-80 group">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i data-lucide="search"
-                            class="w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            class="w-4 h-4 text-black dark:text-white transition-colors"></i>
                     </div>
                     <input id="search-input" type="text"
-                        class="block w-full pl-10 pr-20 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm"
+                        class="block w-full pl-10 pr-20 py-2.5 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl text-sm focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all shadow-sm text-black dark:text-white"
                         placeholder="Search tickers (e.g. AAPL, NVDA)...">
                     <button onclick="handleSearch()"
-                        class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-lg text-xs font-semibold transition-colors">
+                        class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-black dark:bg-white hover:bg-white dark:hover:bg-black text-white dark:text-black border-2 border-black dark:border-white rounded-lg text-xs font-semibold transition-colors">
                         Analyze
                     </button>
                 </div>
 
                 <button onclick="toggleDarkMode()"
-                    class="p-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-gray-500 dark:text-gray-400">
+                    class="p-2.5 bg-white dark:bg-black border-2 border-black dark:border-white rounded-xl hover:bg-black dark:hover:bg-white transition-colors text-black dark:text-white">
                     <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
                     <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
                 </button>
@@ -881,14 +889,14 @@
 
         <!-- Status Bar -->
         <div class="flex justify-between items-center mb-6 px-1">
-            <div id="search-status" class="text-sm font-medium text-gray-500 dark:text-gray-400">Ready to analyze.</div>
+            <div id="search-status" class="text-sm font-medium text-black dark:text-white">Ready to analyze.</div>
             <div class="flex gap-2">
                 <button id="view-viz-btn" onclick="showVisualizations()"
-                    class="hidden flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition shadow-sm text-gray-700 dark:text-gray-300">
+                    class="hidden flex items-center gap-2 px-4 py-2 bg-white dark:bg-black border-2 border-black dark:border-white rounded-lg text-sm font-medium hover:bg-black dark:hover:bg-white transition shadow-sm text-black dark:text-white">
                     <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Charts
                 </button>
                 <button id="download-report-btn" onclick="downloadReport()"
-                    class="hidden flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-sm shadow-blue-500/20">
+                    class="hidden flex items-center gap-2 px-4 py-2 bg-black dark:bg-white hover:bg-white dark:hover:bg-black text-white dark:text-black border-2 border-black dark:border-white rounded-lg text-sm font-medium transition shadow-sm">
                     <i data-lucide="download" class="w-4 h-4"></i> Report
                 </button>
             </div>
@@ -896,8 +904,8 @@
 
         <!-- Popular Stocks Grid -->
         <div id="popular-stocks-section" class="mb-8">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i data-lucide="flame" class="w-5 h-5 text-orange-500"></i> Trending Now
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-black dark:text-white">
+                <i data-lucide="flame" class="w-5 h-5 text-black dark:text-white"></i> Trending Now
             </h2>
             <div id="popular-stocks-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Populated by JS -->
@@ -916,10 +924,10 @@
                 <!-- News Feed -->
                 <div class="glass-panel p-5 rounded-2xl">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold flex items-center gap-2">
-                            <i data-lucide="rss" class="w-4 h-4 text-orange-500"></i> Live Feed
+                        <h3 class="font-semibold flex items-center gap-2 text-black dark:text-white">
+                            <i data-lucide="rss" class="w-4 h-4 text-black dark:text-white"></i> Live Feed
                         </h3>
-                        <span id="news-status" class="text-[10px] text-gray-400">Waiting...</span>
+                        <span id="news-status" class="text-[10px] text-black dark:text-white">Waiting...</span>
                     </div>
                     <div id="news-section" class="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         <!-- News content -->
@@ -943,41 +951,41 @@
                 <!-- What-If Scenario -->
                 <div class="glass-panel p-5 rounded-2xl">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold flex items-center gap-2">
-                            <i data-lucide="sliders" class="w-4 h-4 text-blue-500"></i> Scenario Lab
+                        <h3 class="font-semibold flex items-center gap-2 text-black dark:text-white">
+                            <i data-lucide="sliders" class="w-4 h-4 text-black dark:text-white"></i> Scenario Lab
                         </h3>
                         <span
-                            class="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">SIMULATOR</span>
+                            class="text-[10px] font-bold bg-white dark:bg-black text-black dark:text-white border-2 border-black dark:border-white px-2 py-0.5 rounded-full">SIMULATOR</span>
                     </div>
 
                     <div class="space-y-4 mb-4">
                         <div>
-                            <div class="flex justify-between text-xs mb-1.5">
-                                <span class="text-gray-500 dark:text-gray-400">Market Volatility</span>
+                            <div class="flex justify-between text-xs mb-1.5 text-black dark:text-white">
+                                <span>Market Volatility</span>
                                 <span id="volatility-value" class="font-mono font-medium">1.00x</span>
                             </div>
                             <input id="volatility-slider" type="range" min="0.6" max="1.5" step="0.05" value="1"
-                                class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                                class="w-full h-1.5 bg-white dark:bg-black border-2 border-black dark:border-white rounded-lg appearance-none cursor-pointer accent-black dark:accent-white">
                         </div>
                         <div>
-                            <div class="flex justify-between text-xs mb-1.5">
-                                <span class="text-gray-500 dark:text-gray-400">Risk-Free Rate</span>
+                            <div class="flex justify-between text-xs mb-1.5 text-black dark:text-white">
+                                <span>Risk-Free Rate</span>
                                 <span id="riskfree-value" class="font-mono font-medium">4.0%</span>
                             </div>
                             <input id="riskfree-slider" type="range" min="2.0" max="6.0" step="0.1" value="4"
-                                class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                                class="w-full h-1.5 bg-white dark:bg-black border-2 border-black dark:border-white rounded-lg appearance-none cursor-pointer accent-black dark:accent-white">
                         </div>
                         <div>
-                            <div class="flex justify-between text-xs mb-1.5">
-                                <span class="text-gray-500 dark:text-gray-400">News Sentiment Bias</span>
+                            <div class="flex justify-between text-xs mb-1.5 text-black dark:text-white">
+                                <span>News Sentiment Bias</span>
                                 <span id="news-sentiment-value" class="font-mono font-medium">0.0</span>
                             </div>
                             <input id="news-sentiment-slider" type="range" min="-1" max="1" step="0.1" value="0"
-                                class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                                class="w-full h-1.5 bg-white dark:bg-black border-2 border-black dark:border-white rounded-lg appearance-none cursor-pointer accent-black dark:accent-white">
                         </div>
                     </div>
 
-                    <div id="what-if-output" class="pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div id="what-if-output" class="pt-3 border-t-2 border-black dark:border-white">
                         <!-- Output -->
                     </div>
                 </div>
@@ -986,10 +994,10 @@
         </div>
 
         <footer
-            class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-sm text-gray-500 dark:text-gray-400">
+            class="mt-12 pt-6 border-t-2 border-black dark:border-white text-center text-sm text-black dark:text-white">
             <p class="flex items-center justify-center gap-2">
                 <i data-lucide="cpu" class="w-4 h-4"></i>
-                Powered by Advanced ML Pipeline • <span class="font-medium text-gray-700 dark:text-gray-300">Aimers
+                Powered by Advanced ML Pipeline • <span class="font-medium text-black dark:text-white">Aimers
                     Inc.</span>
             </p>
         </footer>
