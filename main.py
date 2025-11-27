@@ -3,6 +3,10 @@ import sys
 import pandas as pd
 import numpy as np
 import warnings
+from datetime import datetime, timedelta
+
+import xgboost as xgb
+from sklearn.model_selection import cross_val_score, TimeSeriesSplit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 warnings.filterwarnings('ignore')
@@ -10,6 +14,61 @@ warnings.filterwarnings('ignore')
 from data_loader import CleanEnergyDataLoader
 from feature_engineering import FeatureEngineer
 from model_training import XGBoostMarketClassifier
+
+MACRO_SYMBOLS = {'^VIX': 'vix', '^TNX': 'tenyr'}
+MACRO_LOOKBACK_DAYS = 120
+
+def ensure_datetime_index(df):
+    df = df.copy()
+    if not isinstance(df.index, pd.DatetimeIndex):
+        if 'Date' in df.columns:
+            df.index = pd.to_datetime(df['Date'], errors='coerce')
+            df = df.drop(columns=['Date'], errors='ignore')
+        elif 'date' in df.columns:
+            df.index = pd.to_datetime(df['date'], errors='coerce')
+            df = df.drop(columns=['date'], errors='ignore')
+        else:
+            df.index = pd.to_datetime(df.index, errors='coerce')
+    df = df[~df.index.isna()]
+    df = df[~df.index.duplicated(keep='last')]
+    df = df.sort_index()
+    return df
+
+def fetch_macro_indicators(index, lookback=MACRO_LOOKBACK_DAYS):
+    try:
+        import yfinance as yf
+        start = (index.min() - pd.Timedelta(days=lookback)).date()
+        end = (index.max() + pd.Timedelta(days=2)).date()
+        frames = []
+        for symbol, label in MACRO_SYMBOLS.items():
+            data = yf.download(symbol, start=start.isoformat(), end=end.isoformat(), progress=False, auto_adjust=True)
+            if data.empty:
+                continue
+            frames.append(data['Close'].rename(label))
+        if not frames:
+            return None
+        macro_df = pd.concat(frames, axis=1)
+        macro_df = macro_df.reindex(index).ffill().bfill().fillna(method='ffill').fillna(0)
+        return macro_df
+    except Exception:
+        return None
+
+def augment_with_macro_indicators(df):
+    df = ensure_datetime_index(df)
+    macro_df = fetch_macro_indicators(df.index)
+    if macro_df is None or macro_df.empty:
+        return df
+    for col in macro_df.columns:
+        df[f'macro_{col}_close'] = macro_df[col].values
+        df[f'macro_{col}_ma5'] = macro_df[col].rolling(window=5, min_periods=1).mean().values
+    if 'vix' in macro_df.columns:
+        df['macro_vix_pctchg'] = macro_df['vix'].pct_change().fillna(0).values
+    else:
+        df['macro_vix_pctchg'] = np.zeros(len(df))
+    if 'vix' in macro_df.columns and 'tenyr' in macro_df.columns:
+        ratio = macro_df['vix'] / macro_df['tenyr'].replace(0, np.nan)
+        df['macro_vix_to_tenyr'] = ratio.replace([np.inf, -np.inf], np.nan).fillna(0).values
+    return df
 
 def train_single_ticker(ticker, market_data=None, use_significant_moves=False):
     import yfinance as yf
@@ -19,7 +78,7 @@ def train_single_ticker(ticker, market_data=None, use_significant_moves=False):
     
     try:
         loader = CleanEnergyDataLoader(category='CUSTOM', custom_tickers=[ticker])
-        raw_data = loader.download_data(period='2y', interval='1d')
+        raw_data = loader.download_data(period='5y', interval='1d')
         
         if raw_data.empty or len(raw_data) < 50:
             return None
@@ -115,7 +174,7 @@ def main(category='SDG_CLEAN_ENERGY', custom_tickers=None, use_significant_moves
         print(f"Impact: {sdg_info['impact']}")
     
     try:
-        raw_data = loader.download_data(period='2y', interval='1d')
+        raw_data = loader.download_data(period='5y', interval='1d')
         
         if raw_data.empty or len(raw_data) < 50:
             raise ValueError("Insufficient data downloaded")
@@ -131,7 +190,7 @@ def main(category='SDG_CLEAN_ENERGY', custom_tickers=None, use_significant_moves
     market_data = None
     try:
         import yfinance as yf
-        spy_data = yf.download('SPY', period='2y', interval='1d', progress=False, auto_adjust=True)
+        spy_data = yf.download('SPY', period='5y', interval='1d', progress=False, auto_adjust=True)
         if not spy_data.empty:
             spy_data.columns = [f'SPY_{col}' for col in spy_data.columns]
             market_data = spy_data
@@ -172,6 +231,7 @@ def main(category='SDG_CLEAN_ENERGY', custom_tickers=None, use_significant_moves
     
     combined_df = pd.concat(all_ticker_features, axis=1)
     combined_df = combined_df.dropna()
+    combined_df = augment_with_macro_indicators(combined_df)
     
     if len(combined_df) < 50:
         print(f"\n❌ Insufficient samples: {len(combined_df)} (need at least 50)")
@@ -189,7 +249,7 @@ def main(category='SDG_CLEAN_ENERGY', custom_tickers=None, use_significant_moves
     
     output_file = f'data/{category.lower()}_data.csv'
     combined_df.to_csv(output_file)
-    print(f"  ✓ Saved: {combined_df.shape[0]} samples, {combined_df.shape[1]-1} features")
+    print(f"  ✓ Saved: {combined_df.shape[0]} samples, {combined_df.shape[1]-1} features (includes {len([c for c in combined_df.columns if c.startswith('macro_')])} macro features)")
     
     print("\n[3/6] Training XGBoost Model...")
     use_feature_selection = combined_df.shape[1] > 100
@@ -237,28 +297,21 @@ def main(category='SDG_CLEAN_ENERGY', custom_tickers=None, use_significant_moves
     classifier.plot_shap_explanations(X_test, y_test, top_n=15, 
                                      save_path=f'{result_prefix}_shap_explanations.png')
     
-    print("  Running backtest on historical data...")
-    try:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-        from backtesting import Backtester
-        backtester = Backtester(
-            classifier.model, 
-            classifier.scaler, 
-            classifier.feature_names,
-            initial_capital=10000
-        )
-        price_col = f'{primary_ticker}_Close'
-        backtest_results = backtester.run_backtest(combined_df, price_col, confidence_threshold=0.6)
-        backtester.plot_results(save_path=f'{result_prefix}_backtest_results.png')
-        backtester.print_summary()
-    except Exception as e:
-        print(f"  ⚠️  Backtest failed: {e}")
-        import traceback
-        traceback.print_exc()
-    
+    print("  Macro overlay ready; VIX + Treasury features embedded in every epoch (no simulations run).")
     print("\nTop 10 Most Important Features:")
     print(importance_df.head(10).to_string(index=False))
     
+    combined_features = np.vstack([X_train, X_test])
+    combined_targets = np.concatenate([y_train, y_test])
+    if len(combined_targets) > 80:
+        try:
+            tscv = TimeSeriesSplit(n_splits=4 if len(combined_targets) > 150 else 3)
+            cv_model = xgb.XGBClassifier(**classifier.model.get_params())
+            cv_scores = cross_val_score(cv_model, combined_features, combined_targets, cv=tscv, scoring='roc_auc', n_jobs=-1)
+            print(f"\n[Cross-validation] Rolling ROC-AUC: {cv_scores.mean():.3f} ± {cv_scores.std():.3f}")
+        except Exception as exc:
+            print(f"  ⚠️  TimeSeries CV failed: {exc}")
+
     print("\n[6/6] Making Next-Day Prediction...")
     exclude_cols = ['target', 'future_close'] + (['return'] if use_significant_moves else [])
     latest_features = combined_df.drop(columns=[col for col in exclude_cols if col in combined_df.columns]).iloc[[-1]]
@@ -337,7 +390,7 @@ def train_and_predict(tickers, category='CUSTOM', use_significant_moves=False, t
         market_data = None
         try:
             import yfinance as yf
-            spy_data = yf.download('SPY', period='2y', interval='1d', progress=False, auto_adjust=True)
+            spy_data = yf.download('SPY', period='5y', interval='1d', progress=False, auto_adjust=True)
             if not spy_data.empty:
                 spy_data.columns = [f'SPY_{col}' for col in spy_data.columns]
                 market_data = spy_data
