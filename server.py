@@ -21,7 +21,18 @@ import zipfile
 sys.path.insert(0, os.path.dirname(__file__))
 warnings.filterwarnings('ignore')
 
-from main import train_and_predict
+try:
+    from main import train_and_predict
+except ImportError as e:
+    print(f"ERROR: Failed to import from main.py: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+except Exception as e:
+    print(f"ERROR: Unexpected error during import: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 
 app = Flask(__name__)
 CORS(app)
@@ -40,7 +51,6 @@ CATEGORIES = {
 }
 
 def get_current_price(ticker):
-    """Get current price for ticker"""
     try:
         import yfinance as yf
         stock = yf.Ticker(ticker)
@@ -52,18 +62,69 @@ def get_current_price(ticker):
     return None
 
 def get_currency_symbol(ticker):
-    """Determine currency symbol based on ticker exchange"""
     if ticker.endswith('.NS') or ticker.endswith('.BO'):
-        return '₹'  # Indian Rupee
+        return '₹'
     elif ticker.endswith('.L') or ticker.endswith('.TO'):
-        return '£'  # British Pound (for LSE) or could be CAD for TSX
+        return '£'
     elif ticker.endswith('.T') or ticker.endswith('.HK'):
-        return '¥'  # Japanese Yen or Hong Kong Dollar
+        return '¥'
     else:
-        return '$'  # Default to USD
+        return '$'
+
+def get_fundamentals(ticker):
+    pe_ratio = None
+    dividend_yield = None
+    next_earnings = None
+    last_earnings = None
+    eps = None
+    try:
+        import yfinance as yf
+        stock = yf.Ticker(ticker)
+        fast_info = getattr(stock, "fast_info", None)
+        if fast_info:
+            pe_ratio = fast_info.get("trailing_pe") or fast_info.get("forward_pe")
+            dividend_yield = fast_info.get("dividend_yield")
+            if dividend_yield is not None:
+                dividend_yield = float(dividend_yield) * 100.0
+        info = getattr(stock, "info", {}) or {}
+        if not pe_ratio:
+            pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+        if dividend_yield is None:
+            dy = info.get("dividendYield")
+            if dy is not None:
+                dividend_yield = float(dy) * 100.0
+        try:
+            cal = getattr(stock, "calendar", None)
+            if isinstance(cal, pd.DataFrame) and not cal.empty:
+                if "Earnings Date" in cal.index:
+                    dates = cal.loc["Earnings Date"].values
+                    if len(dates) > 0:
+                        next_earnings = pd.to_datetime(dates[0]).isoformat()
+        except Exception:
+            pass
+        try:
+            earnings_dates = getattr(stock, "earnings_dates", None)
+            if callable(earnings_dates):
+                ed_df = earnings_dates(limit=4)
+            else:
+                ed_df = earnings_dates
+            if isinstance(ed_df, pd.DataFrame) and not ed_df.empty:
+                last_row = ed_df.sort_index().iloc[-1]
+                last_earnings = pd.to_datetime(last_row.name).isoformat()
+                eps = float(last_row.get("EPS Actual")) if "EPS Actual" in last_row else None
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return {
+        "peRatio": float(pe_ratio) if pe_ratio not in (None, np.nan) else None,
+        "dividendYield": float(dividend_yield) if dividend_yield not in (None, np.nan) else None,
+        "nextEarningsDate": next_earnings,
+        "lastEarningsDate": last_earnings,
+        "eps": eps
+    }
 
 def normalize_ticker_input(tickers_input):
-    """Normalize tickers input from request payload"""
     if isinstance(tickers_input, str):
         tickers = [t.strip().upper() for t in tickers_input.split(',') if t.strip()]
     else:
@@ -71,7 +132,6 @@ def normalize_ticker_input(tickers_input):
     return tickers
 
 def compute_risk_level(ticker_df):
-    """Approximate volatility-based risk level from returns"""
     if ticker_df is None:
         return 'Unknown', None
     candidate_cols = [col for col in ticker_df.columns if 'return_1d' in col.lower()] or \
@@ -92,7 +152,6 @@ def compute_risk_level(ticker_df):
     return 'High', vol_pct
 
 def derive_investment_opinion(prediction_payload, ticker_df=None, current_price=None):
-    """Generate buy/sell/hold opinion and supporting text"""
     direction = prediction_payload.get('prediction')
     confidence = prediction_payload.get('confidence', 0)
     prob_up = prediction_payload.get('probability_up', 0)
@@ -139,12 +198,14 @@ def derive_investment_opinion(prediction_payload, ticker_df=None, current_price=
     }
 
 def build_prediction_entry(ticker, result, sdg_alignment=None):
-    """Create enriched prediction payload for API responses"""
     pred = result['prediction']
     metrics = result['metrics']
-    ticker_df = result.get('ticker_df') or result.get('combined_df')
+    ticker_df = result.get('ticker_df')
+    if ticker_df is None:
+        ticker_df = result.get('combined_df')
     current_price = result.get('current_price') or get_current_price(ticker) or 0.0
     currency = get_currency_symbol(ticker)
+    fundamentals = get_fundamentals(ticker)
     
     enriched = derive_investment_opinion(pred, ticker_df=ticker_df, current_price=current_price)
     estimated_price = pred.get('estimated_price', current_price)
@@ -162,6 +223,11 @@ def build_prediction_entry(ticker, result, sdg_alignment=None):
         'isPositive': pred.get('prediction') == 'UP',
         'hasRealPrediction': True,
         'sdgAlignment': sdg_alignment or 'Not assessed',
+        'peRatio': fundamentals.get('peRatio'),
+        'dividendYield': fundamentals.get('dividendYield'),
+        'nextEarningsDate': fundamentals.get('nextEarningsDate'),
+        'lastEarningsDate': fundamentals.get('lastEarningsDate'),
+        'eps': fundamentals.get('eps'),
         **enriched
     }
     
@@ -186,7 +252,6 @@ def build_prediction_entry(ticker, result, sdg_alignment=None):
     return entry, metric_entry
 
 def prepare_prediction_payload(tickers):
-    """Generate predictions, metadata, and cached pipeline result"""
     pipeline_result = get_or_create_model(tickers)
     if not pipeline_result:
         return None
@@ -235,7 +300,6 @@ def prepare_prediction_payload(tickers):
     }
 
 def build_visualization_context(ticker, result, combined=False):
-    """Normalize result structure for visualization helpers"""
     if combined:
         return {
             'classifier': result.get('classifier'),
@@ -279,7 +343,6 @@ def build_visualization_context(ticker, result, combined=False):
     }
 
 def build_visualization_bundle(ticker, result, metrics, combined=False, as_data_uri=True):
-    """Create visualization outputs (data URIs or raw bytes) for a result"""
     context = build_visualization_context(ticker, result, combined=combined)
     return {
         'confusionMatrix': create_confusion_matrix_image(metrics['confusion_matrix'], as_data_uri=as_data_uri),
@@ -298,7 +361,6 @@ def build_visualization_bundle(ticker, result, metrics, combined=False, as_data_
     }
 
 def write_visualizations_to_zip(zip_file, ticker, viz_bundle):
-    """Persist visualization bytes to the zip archive"""
     filename_map = {
         'confusionMatrix': 'confusion_matrix.png',
         'rocCurve': 'roc_curve.png',
@@ -317,7 +379,6 @@ def write_visualizations_to_zip(zip_file, ticker, viz_bundle):
         zip_file.writestr(f'visualizations/{ticker}/metrics.json', json.dumps(metrics_payload, indent=2))
 
 def get_or_create_model(tickers):
-    """Get cached model or run main.py pipeline to create new one"""
     ticker_key = ','.join(sorted(tickers))
     
     with cache_lock:
@@ -337,7 +398,6 @@ def get_or_create_model(tickers):
         return result
 
 def create_confusion_matrix_image(cm, as_data_uri=True):
-    """Generate confusion matrix as base64 image"""
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=['DOWN', 'UP'], yticklabels=['DOWN', 'UP'])
@@ -358,7 +418,6 @@ def create_confusion_matrix_image(cm, as_data_uri=True):
     return image_bytes
 
 def create_roc_curve_image(pipeline_result, as_data_uri=True):
-    """Generate ROC curve as base64 image"""
     from sklearn.metrics import roc_curve, auc
     
     classifier = pipeline_result['classifier']
@@ -391,7 +450,6 @@ def create_roc_curve_image(pipeline_result, as_data_uri=True):
     return image_bytes
 
 def create_feature_importance_image(pipeline_result, top_n=15, as_data_uri=True):
-    """Generate feature importance chart as base64 image"""
     try:
         classifier = pipeline_result.get('classifier')
         if classifier is None:
@@ -431,7 +489,6 @@ def create_feature_importance_image(pipeline_result, top_n=15, as_data_uri=True)
         return None
 
 def create_price_history_chart(pipeline_result, as_data_uri=True):
-    """Generate price history chart as base64 image"""
     try:
         tickers = pipeline_result.get('tickers', [])
         if not tickers:
@@ -503,7 +560,6 @@ def create_price_history_chart(pipeline_result, as_data_uri=True):
         return None
 
 def create_returns_distribution_chart(pipeline_result, as_data_uri=True):
-    """Generate returns distribution as base64 image"""
     try:
         # Try to get data from different possible structures
         combined_df = pipeline_result.get('combined_df')
@@ -557,7 +613,6 @@ def create_returns_distribution_chart(pipeline_result, as_data_uri=True):
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """Main prediction endpoint - trains separate model for each ticker and returns predictions with estimated prices"""
     try:
         data = request.get_json()
         tickers = normalize_ticker_input(data.get('tickers', ''))
@@ -582,7 +637,6 @@ def predict():
 
 @app.route('/api/visualizations', methods=['POST'])
 def get_visualizations():
-    """Get all visualization charts"""
     try:
         data = request.get_json()
         tickers = normalize_ticker_input(data.get('tickers', ''))
@@ -621,7 +675,6 @@ def get_visualizations():
 
 @app.route('/api/download-report', methods=['POST'])
 def download_report():
-    """Download predictions, metrics, and visualizations as a zip archive"""
     try:
         data = request.get_json()
         tickers = normalize_ticker_input(data.get('tickers', ''))
@@ -688,7 +741,6 @@ def download_report():
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
-    """Get available stock categories"""
     categories = []
     for cat, tickers in CATEGORIES.items():
         categories.append({
@@ -700,7 +752,6 @@ def get_categories():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
@@ -709,12 +760,17 @@ def health():
 
 @app.route('/api/clear-cache', methods=['POST'])
 def clear_cache():
-    """Clear model cache"""
     with cache_lock:
         models_cache.clear()
     return jsonify({'status': 'cache cleared'})
 
 if __name__ == '__main__':
+    # Create necessary directories
+    os.makedirs('data', exist_ok=True)
+    os.makedirs('models', exist_ok=True)
+    os.makedirs('results', exist_ok=True)
+    os.makedirs('/var/log/supervisor', exist_ok=True)
+    
     print("="*70)
     print("MARKET MOVEMENT CLASSIFIER API SERVER")
     print("="*70)
@@ -725,8 +781,14 @@ if __name__ == '__main__':
     print("  GET  /api/health               - Health check")
     print("  POST /api/clear-cache          - Clear model cache")
     print("="*70)
-    print("\nServer starting on http://localhost:5000")
+    print("\nServer starting on http://0.0.0.0:5000")
     print("Frontend should connect to: http://localhost:5000/api")
     print("="*70 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    try:
+        app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
+    except Exception as e:
+        print(f"Fatal error starting server: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
