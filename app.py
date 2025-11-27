@@ -5,15 +5,13 @@ app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
 def index():
-    """Serve the main index.html"""
     return render_template('index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    """Serve any static files"""
     return app.send_static_file(path)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  
     print("="*70)
     print("MARKET MOVEMENT CLASSIFIER - FRONTEND SERVER")
     print("="*70)
@@ -21,7 +19,6 @@ if __name__ == '__main__':
     print("Make sure backend API is running on: http://localhost:5000")
     print("="*70 + "\n")
     
-    # Try to open browser automatically
     import webbrowser
     try:
         webbrowser.open('http://localhost:8080')
