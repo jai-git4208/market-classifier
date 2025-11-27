@@ -13,8 +13,6 @@ import seaborn as sns
 import os
 
 class XGBoostMarketClassifier:
-    """Enhanced XGBoost classifier with optimization"""
-    
     def __init__(self, random_state=42, use_feature_selection=True, top_k_features=100):
         self.random_state = random_state
         self.model = None
@@ -27,36 +25,29 @@ class XGBoostMarketClassifier:
         self.validation_data_ = None
         
     def prepare_data(self, df, target_col='target', test_size=0.2):
-        """Prepare train/test split with proper scaling and cleaning"""
         exclude_cols = [target_col, 'future_close', 'return'] + [col for col in df.columns if 'Date' in col or 'date' in col.lower()]
         feature_cols = [col for col in df.columns if col not in exclude_cols]
         
         X = df[feature_cols].copy()
         y = df[target_col].copy()
         
-        # CRITICAL: Clean inf and nan values
         print(f"  Cleaning data...")
         print(f"    Before: {X.shape}, NaN: {X.isna().sum().sum()}, Inf: {np.isinf(X).sum().sum()}")
         
-        # Replace inf with nan
         X = X.replace([np.inf, -np.inf], np.nan)
         
-        # Fill nan with forward fill, then backward fill, then 0
         X = X.ffill().bfill().fillna(0)
         
-        # Double check - clip extreme values
         for col in X.columns:
             if X[col].dtype in ['float64', 'float32', 'int64', 'int32']:
                 col_std = X[col].std()
                 col_mean = X[col].mean()
                 
-                # If std is valid, clip to ±5 std from mean
                 if col_std > 0 and not np.isnan(col_std) and not np.isinf(col_std):
                     lower_bound = col_mean - 5 * col_std
                     upper_bound = col_mean + 5 * col_std
                     X[col] = X[col].clip(lower=lower_bound, upper=upper_bound)
         
-        # Final check - replace any remaining inf/nan
         X = X.replace([np.inf, -np.inf], 0)
         X = X.fillna(0)
         
@@ -67,22 +58,18 @@ class XGBoostMarketClassifier:
         print(f"  Features shape: {X.shape}")
         print(f"  Target distribution: UP={sum(y==1)}, DOWN={sum(y==0)}")
         
-        # Time-series aware split
         split_idx = int(len(X) * (1 - test_size))
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
         
-        # Verify no inf before scaling
         assert not np.any(np.isinf(X_train.values)), "X_train contains inf before scaling"
         assert not np.any(np.isinf(X_test.values)), "X_test contains inf before scaling"
         
-        # Feature selection (if enabled)
         if self.feature_selector is not None and len(self.feature_names) > self.feature_selector.k:
             print(f"  Selecting top {self.feature_selector.k} features from {len(self.feature_names)}...")
             X_train_selected = self.feature_selector.fit_transform(X_train, y_train)
             X_test_selected = self.feature_selector.transform(X_test)
             
-            # Update feature names to selected features
             selected_mask = self.feature_selector.get_support()
             self.selected_features = [self.feature_names[i] for i in range(len(self.feature_names)) if selected_mask[i]]
             self.feature_names = self.selected_features
@@ -90,22 +77,18 @@ class XGBoostMarketClassifier:
             print(f"  Selected {len(self.feature_names)} features")
             X_train, X_test = X_train_selected, X_test_selected
         
-        # Scale
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
         
         return X_train_scaled, X_test_scaled, y_train, y_test
     
     def train(self, X_train, y_train, params=None, use_tuning=True):
-        """Train XGBoost classifier with optional hyperparameter tuning"""
         if use_tuning and len(X_train) > 100:
-            # Use hyperparameter tuning for better performance
             print("  Training with hyperparameter tuning...")
             self.training_data_ = (X_train, y_train)
             self.validation_data_ = None
             return self.train_with_tuning(X_train, y_train, n_iter=30)
         
-        # Use optimized default parameters
         if params is None:
             params = {
                 'max_depth': 6,
@@ -126,7 +109,6 @@ class XGBoostMarketClassifier:
         
         self.model = xgb.XGBClassifier(**params)
         
-        # Hold out a validation chunk from the tail of the training window to avoid leakage
         validation_fraction = 0.15 if len(X_train) >= 80 else 0.1
         val_size = max(20, int(len(X_train) * validation_fraction))
         if val_size >= len(X_train):
@@ -159,10 +141,8 @@ class XGBoostMarketClassifier:
         return self.model
     
     def train_with_tuning(self, X_train, y_train, n_iter=30):
-        """Train with hyperparameter tuning using TimeSeriesSplit"""
         from sklearn.model_selection import RandomizedSearchCV
         
-        # Expanded parameter space for better exploration
         param_distributions = {
             'max_depth': [4, 5, 6, 7, 8],
             'learning_rate': [0.05, 0.08, 0.1, 0.12, 0.15],
@@ -183,8 +163,6 @@ class XGBoostMarketClassifier:
         )
         
         print(f"  Tuning hyperparameters ({n_iter} iterations with TimeSeriesSplit)...")
-        
-        # Use TimeSeriesSplit for proper time-series validation
         tscv = TimeSeriesSplit(n_splits=3)
         
         random_search = RandomizedSearchCV(
@@ -208,7 +186,6 @@ class XGBoostMarketClassifier:
         return self.model
     
     def train_ensemble(self, X_train, y_train):
-        """Train ensemble of models"""
         print("  Training ensemble (XGB + LightGBM + RF)...")
         
         xgb_model = xgb.XGBClassifier(
@@ -241,7 +218,6 @@ class XGBoostMarketClassifier:
         return self.model
     
     def time_series_cv(self, X, y, n_splits=5):
-        """Time-series cross-validation"""
         tscv = TimeSeriesSplit(n_splits=n_splits)
         
         cv_scores = []
@@ -264,7 +240,6 @@ class XGBoostMarketClassifier:
         return cv_scores
     
     def evaluate(self, X_train, X_test, y_train, y_test):
-        """Comprehensive model evaluation"""
         train_features = X_train
         train_target = y_train
         if self.training_data_ is not None:
@@ -298,7 +273,6 @@ class XGBoostMarketClassifier:
         return self.metrics
     
     def plot_confusion_matrix(self, save_path='results/confusion_matrix.png'):
-        """Plot confusion matrix"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         plt.figure(figsize=(8, 6))
@@ -314,7 +288,6 @@ class XGBoostMarketClassifier:
         print(f"  ✓ Confusion matrix saved to {save_path}")
     
     def plot_roc_curve(self, X_test, y_test, save_path='results/roc_curve.png'):
-        """Plot ROC curve"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         y_proba = self.model.predict_proba(X_test)[:, 1]
@@ -334,7 +307,6 @@ class XGBoostMarketClassifier:
         print(f"  ✓ ROC curve saved to {save_path}")
     
     def plot_feature_importance(self, top_n=20, save_path='results/feature_importance.png'):
-        """Plot top feature importances"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         if hasattr(self.model, 'feature_importances_'):
@@ -363,7 +335,6 @@ class XGBoostMarketClassifier:
         return importance_df
     
     def plot_shap_explanations(self, X_test, y_test, top_n=15, save_path='results/shap_explanations.png'):
-        """Generate SHAP explanations for model interpretability (hackathon judges love this!)"""
         try:
             import shap
         except ImportError:
@@ -373,18 +344,14 @@ class XGBoostMarketClassifier:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
         try:
-            # Use a sample of test data for faster computation
             sample_size = min(100, len(X_test))
             X_sample = X_test[:sample_size]
             
-            # Create SHAP explainer
             explainer = shap.TreeExplainer(self.model)
             shap_values = explainer.shap_values(X_sample)
             
-            # Get feature names
             feature_names = self.feature_names[:len(shap_values[0])] if isinstance(shap_values, list) else self.feature_names
             
-            # Plot summary
             plt.figure(figsize=(12, 8))
             shap.summary_plot(shap_values, X_sample, feature_names=feature_names, 
                             max_display=top_n, show=False)
@@ -394,7 +361,6 @@ class XGBoostMarketClassifier:
             
             print(f"  ✓ SHAP explanations saved to {save_path}")
             
-            # Also create a bar plot for top features
             bar_path = save_path.replace('.png', '_bar.png')
             plt.figure(figsize=(10, 8))
             shap.summary_plot(shap_values, X_sample, feature_names=feature_names, 
@@ -412,26 +378,19 @@ class XGBoostMarketClassifier:
             return None
     
     def predict_next_day(self, latest_features, current_price=None):
-        """Predict next day's market movement and estimated closing price"""
-        # Clean the features before prediction
         latest_features = latest_features.replace([np.inf, -np.inf], np.nan)
         latest_features = latest_features.ffill().bfill().fillna(0)
         
-        # CRITICAL: Only use features that were selected during training
         if self.selected_features is not None:
-            # Filter to only selected features
             available_features = [f for f in self.selected_features if f in latest_features.columns]
             if len(available_features) != len(self.selected_features):
-                # Some features might be missing, fill with 0
                 missing = set(self.selected_features) - set(available_features)
                 for feat in missing:
                     latest_features[feat] = 0
             latest_features = latest_features[self.selected_features]
         else:
-            # Use all feature names if no selection was done
             available_features = [f for f in self.feature_names if f in latest_features.columns]
             latest_features = latest_features[available_features]
-            # Add missing features as zeros
             missing = set(self.feature_names) - set(available_features)
             for feat in missing:
                 latest_features[feat] = 0
@@ -444,18 +403,12 @@ class XGBoostMarketClassifier:
         direction = 'UP' if prediction == 1 else 'DOWN'
         confidence = max(probability)
         
-        # Estimate closing price based on direction and historical volatility
         estimated_price = None
         if current_price is not None and current_price > 0:
-            # Use probability-weighted expected return
-            # Typical daily move: 1-3% for most stocks
-            # Use confidence to scale the expected move
             if direction == 'UP':
-                # Expected return when UP: 1-2% weighted by confidence
-                expected_return = 0.01 + (0.01 * confidence)  # 1% to 2% range
+                expected_return = 0.01 + (0.01 * confidence)
             else:
-                # Expected return when DOWN: -1% to -2% weighted by confidence
-                expected_return = -0.01 - (0.01 * confidence)  # -1% to -2% range
+                expected_return = -0.01 - (0.01 * confidence)
             
             estimated_price = current_price * (1 + expected_return)
         
@@ -469,13 +422,11 @@ class XGBoostMarketClassifier:
         }
     
     def save_model(self, path='models/xgboost_model.json'):
-        """Save trained model"""
         os.makedirs(os.path.dirname(path), exist_ok=True)
         self.model.save_model(path)
         print(f"  ✓ Model saved to {path}")
     
     def load_model(self, path='models/xgboost_model.json'):
-        """Load trained model"""
         self.model = xgb.XGBClassifier()
         self.model.load_model(path)
         print(f"  ✓ Model loaded from {path}")
