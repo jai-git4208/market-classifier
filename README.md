@@ -228,6 +228,14 @@ docker run -p 8080:8080 market-classifier-frontend
 
 ---
 
+### Unique Intelligence Add-ons
+
+- **Macro shock overlays** highlight upcoming economic-calendar events (Fed, CPI, payrolls, etc.) that historically stress the sectors you are analyzing.
+- **What-if sliders** let you twist volatility, the risk-free rate, and news-sentiment bias to see how each ticker's confidence would bend in real time.
+- **Peer anomaly radar** runs the same ML inference on sector peers and surfaces whoever deviates most from the cohort, flagging contrarian setups.
+
+---
+
 ### Option 2: Standalone ML Pipeline (CLI)
 
 #### Run Single Category
