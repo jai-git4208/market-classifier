@@ -2,30 +2,30 @@ MARKET MOVEMENT CLASSIFIER - Custom Selection
 ======================================================================
 
 Category: CUSTOM
-Tickers: TSLA
+Tickers: RELIANCE.NS
 SDG Aligned: No
 
 Training Accuracy:   1.0000
-Test Accuracy:       0.4875
-Test F1-Score:       0.2264
-Test ROC-AUC:        0.5177
+Test Accuracy:       0.5463
+Test F1-Score:       0.5690
+Test ROC-AUC:        0.5776
 
 Confusion Matrix:
-[[33  3]
- [38  6]]
+[[56 55]
+ [48 68]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.46      0.92      0.62        36
-           1       0.67      0.14      0.23        44
+           0       0.54      0.50      0.52       111
+           1       0.55      0.59      0.57       116
 
-    accuracy                           0.49        80
-   macro avg       0.57      0.53      0.42        80
-weighted avg       0.58      0.49      0.40        80
+    accuracy                           0.55       227
+   macro avg       0.55      0.55      0.54       227
+weighted avg       0.55      0.55      0.55       227
 
 
 Next Day Prediction:
-Ticker: TSLA
+Ticker: RELIANCE.NS
 Movement: DOWN
-Confidence: 85.91%
+Confidence: 90.98%
