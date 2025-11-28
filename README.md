@@ -5,7 +5,7 @@ It uses a trained **XGBoost model** to predict next-day stock movements (UP/DOWN
 
 ---
 
-## 📌 Table of Contents
+##  Table of Contents
 1. Overview  
 2. Problem Statement  
 3. Features  
@@ -25,7 +25,7 @@ It uses a trained **XGBoost model** to predict next-day stock movements (UP/DOWN
 
 ---
 
-## 🔍 1. Overview  
+##  1. Overview  
 The Market Movement Classifier is a **binary classification model** that predicts whether a stock’s next-day closing price will be **UP or DOWN**.
 
 It combines:
@@ -36,12 +36,12 @@ It combines:
 
 ---
 
-## 🧩 2. Problem Statement  
+##  2. Problem Statement  
 Build a trained ML model using **2 years of historical time-series stock data** to predict whether the next day’s closing price will go **UP or DOWN**.
 
 ---
 
-## ⭐ 3. Features  
+##  3. Features  
 - **Next-Day Movement Prediction** (UP/DOWN + confidence %)  
 - **Real-Time Stock Data** using Yahoo Finance  
 - **Multi-Ticker Support**  
@@ -55,7 +55,7 @@ Build a trained ML model using **2 years of historical time-series stock data** 
 
 ---
 
-## 📁 4. Project Structure  
+##  4. Project Structure  
 
 ```
 market-classifier/
@@ -81,7 +81,7 @@ market-classifier/
 
 ---
 
-## 🖥️ 5. Backend Stack  
+##  5. Backend Stack  
 - Python 3.9  
 - Flask 3.0  
 - XGBoost 2.0  
@@ -93,7 +93,7 @@ market-classifier/
 
 ---
 
-## 🎨 6. Frontend Stack  
+##  6. Frontend Stack  
 - HTML5  
 - Tailwind CSS  
 - JavaScript  
@@ -101,7 +101,7 @@ market-classifier/
 
 ---
 
-## 🤖 7. AI Model  
+##  7. AI Model  
 - **150+ engineered features**  
 - Technical Indicators (RSI, MACD, EMA, etc.)  
 - Regime-based features (SPY, VIX)  
@@ -110,7 +110,7 @@ market-classifier/
 
 ---
 
-## ⚙️ 8. Installation
+##  8. Installation
 
 ### **Prerequisites**
 - Python 3.9  
@@ -129,7 +129,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🚀 9. How to Use
+##  9. How to Use
 
 ### **Option 1: Full Stack Mode (Recommended)**
 
@@ -147,7 +147,7 @@ Runs at: **http://localhost:8080**
 
 ---
 
-## ⚙️ 10. Model Configuration (XGBoost)
+##  10. Model Configuration (XGBoost)
 
 ```
 {
@@ -165,7 +165,7 @@ Runs at: **http://localhost:8080**
 
 ---
 
-## 🔬 11. Training Process  
+##  11. Training Process  
 1. Download 2-year OHLCV data  
 2. Build 150+ technical indicators  
 3. Create binary target label  
@@ -177,13 +177,13 @@ Runs at: **http://localhost:8080**
 
 ---
 
-## 🌱 12. SDG Alignment (Bonus)  
+##  12. SDG Alignment (Bonus)  
 The model can also analyse **Clean Energy Stocks (SDG #7)** such as `ADANIGREEN.NS`.  
 Dedicated clean-energy datasets & models are included.
 
 ---
 
-## 🛠️ 13. Troubleshooting  
+##  13. Troubleshooting  
 
 ### 1. **"Input contains infinity"**
 Fixed using:
@@ -223,14 +223,14 @@ SelectKBest(k=30)
 
 ---
 
-## 👥 14. Contributors  
-- **Meet**  
-- **Jaimin**  
+##  14. Contributors  
+- **Meet Ratwani**  
+- **Jaimin Pansal**  
 Airport School, Ahmedabad (Gujarat)
 
 ---
 
-## 🙏 15. Acknowledgments  
+##  15. Acknowledgments  
 - XGBoost Team  
 - Yahoo Finance  
 - scikit-learn Community  
@@ -238,6 +238,8 @@ Airport School, Ahmedabad (Gujarat)
 - Tailwind CSS  
 - YouTube Creators  
 - Jupyter Notebooks (free GPUs)
+- AI Models For Explaining us Market core concepts and Movements .
+- AI Model (Copilot ) to tell what things are to be added in Readme for a hackathon   
 
 ---
 
@@ -245,4 +247,4 @@ Airport School, Ahmedabad (Gujarat)
 **GitHub Repository:**  
 https://github.com/jai-git4208/market-classifier  
 
-Built with ❤️ by **Meet & Jaimin**  
+Built with ❤️ by **Meet Ratwani  & Jaimin Pansal**  
