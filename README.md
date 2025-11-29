@@ -246,7 +246,7 @@ Airport School, Ahmedabad (Gujarat)
 
 ---
 
-## 🔗 16. Links  
+## 16. Links  
 **GitHub Repository:**  
 https://github.com/jai-git4208/market-classifier  
 
