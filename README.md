@@ -1,54 +1,45 @@
-# Market Movement Classifier - AI-Powered Stock Prediction System
+# Market Movement Classifier  
 
-A complete end-to-end machine learning application that predicts next-day stock market movements (UP/DOWN) using XGBoost, comprehensive technical indicators, and real-time data visualization.
+The **Market Movement Classifier** is an AI-based stock prediction system developed by **Team Aimers**.  
+It uses a trained **XGBoost model** to predict next-day stock movements (UP/DOWN) and provides **real-time charts**, **latest stock data**, and **financial news** through an integrated full-stack web application.
 
 > **🏆 Hackathon Ready:** See [HACKATHON_SUMMARY.md](HACKATHON_SUMMARY.md) for presentation summary and [QUICK_START.md](QUICK_START.md) for quick demo guide.
 
 ---
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Technology Stack](#technology-stack)
-- [Installation](#installation)
-- [Usage](#usage)
-- [API Documentation](#api-documentation)
-- [Model Details](#model-details)
-- [SDG Alignment](#sdg-alignment)
-- [Results & Performance](#results--performance)
-- [Troubleshooting](#troubleshooting)
-- [Future Improvements](#future-improvements)
-- [Contributors](#contributors)
-
----
-
-## 🎯 Overview
-
-This project implements a **binary classification model** to predict whether a stock's next-day closing price will be **UP or DOWN**. It combines:
-
-- **Machine Learning Pipeline** (`main.py`) - Data loading, feature engineering, XGBoost training
-- **REST API Backend** (`server.py`) - Flask API exposing ML predictions
-- **Interactive Frontend** (`index.html`) - Real-time stock predictions with visualizations
-- **Web Server** (`app.py`) - Serves the frontend application
-
-### Problem Statement
-
-> Train a classification model using historical time-series data (e.g., 2-year stock prices) to predict whether the next day's closing value will be UP or DOWN (binary classification).
-
-**✅ Fully aligned with project requirements:**
-- Next-day prediction (1-day forward)
-- Binary classification (UP=1, DOWN=0)
-- XGBoost classifier with 150+ engineered features
-- SDG-aligned stocks available (Clean Energy, Healthcare)
-- Real-time data fetching via yfinance
+##  Table of Contents
+1. Overview  
+2. Problem Statement  
+3. Features  
+4. Project Structure  
+5. Backend Stack  
+6. Frontend Stack  
+7. AI Model  
+8. Installation  
+9. How to Use  
+10. Model Configuration  
+11. Training Process  
+12. SDG Alignment  
+13. Troubleshooting  
+14. Contributors  
+15. Acknowledgments  
+16. Links  
 
 ---
 
-## ✨ Features
+##  1. Overview  
+The Market Movement Classifier is a **binary classification model** that predicts whether a stock’s next-day closing price will be **UP or DOWN**.
 
-### Core Functionality
+It combines:
+- **Machine Learning Pipeline (main.py)** – Data loading, feature engineering, XGBoost training, and visualization  
+- **REST API Backend (server.py)** – Flask API connecting ML to frontend  
+- **Interactive UI (index.html)** – Real-time visualizations & predictions  
+- **Web Server (app.py)** – Hosts frontend  
+
+---
+
+##  2. Problem Statement  
+Build a trained ML model using **2 years of historical time-series stock data** to predict whether the next day’s closing price will go **UP or DOWN**.
 
 - 🎯 **Next-Day Predictions** - Binary UP/DOWN classification with confidence scores
 - 📊 **250+ Technical Features** - RSI, MACD, Bollinger Bands, ADX, Stochastic, Williams %R, Fibonacci, Ichimoku Cloud
@@ -65,109 +56,63 @@ This project implements a **binary classification model** to predict whether a s
 
 ### Technical Features
 
-- ⚡ **Model Caching** - Avoids retraining for 1 hour (configurable)
-- 🛡️ **Data Cleaning** - Handles infinity, NaN, extreme outliers automatically
-- ⏱️ **Time-Series Aware** - No data leakage, proper train/test splitting
-- 🔍 **Comprehensive Metrics** - Accuracy, ROC-AUC, F1-Score, Confusion Matrix
-- 🎨 **Modern UI** - Responsive design with Tailwind CSS
-- 🔌 **RESTful API** - Clean endpoint design with CORS support
+##  3. Features  
+- **Next-Day Movement Prediction** (UP/DOWN + confidence %)  
+- **Real-Time Stock Data** using Yahoo Finance  
+- **Multi-Ticker Support**  
+- **Interactive Visualizations:**  
+  - Confusion Matrix  
+  - ROC Curve  
+  - Feature Importance  
+  - Price History  
+- **Financial News Fetching** (News API)  
+- **Live Stock Graphs** (MarketStack API)  
 
 ---
 
-## 📁 Project Structure
+##  4. Project Structure  
 
 ```
 market-classifier/
 │
 ├── app.py                          # Frontend web server (Flask)
-├── server.py                       # Backend API server (Flask + ML pipeline)
-├── main.py                         # Standalone ML pipeline (CLI)
-├── index.html                      # Frontend UI (HTML + JavaScript)
-├── requirements.txt                # Python dependencies
-├── README.md                       # This file
+├── server.py                       # Backend API (Flask + ML)
+├── main.py                         # ML pipeline
+├── index.html                      # Frontend UI
+├── requirements.txt                # Dependencies
+├── README.md
 │
-├── src/                            # Core ML modules
-│   ├── __init__.py
-│   ├── data_loader.py             # Stock data download & preprocessing
-│   ├── feature_engineering.py     # Technical indicator creation
-│   ├── model_training.py          # XGBoost training & evaluation
-│   ├── external_features.py       # Market regime features (SPY, VIX)
-│   └── lstm_model.py              # LSTM implementation (optional)
+├── src/
+│   ├── data_loader.py
+│   ├── feature_engineering.py
+│   ├── model_training.py
+│   ├── external_features.py
+│   └── lstm_model.py
 │
-├── data/                           # Generated datasets
-│   ├── sdg_clean_energy_data.csv
-│   ├── tech_data.csv
-│   └── ...
-│
-├── models/                         # Saved trained models
-│   ├── sdg_clean_energy_xgboost_model.json
-│   ├── tech_xgboost_model.json
-│   └── ...
-│
-└── results/                        # Visualizations & metrics
-    ├── confusion_matrix.png
-    ├── roc_curve.png
-    ├── feature_importance.png
-    └── metrics.txt
+├── data/
+├── models/
+└── results/
 ```
 
 ---
 
-## 🛠️ Technology Stack
-
-### Backend
-- **Python 3.9+** - Core language
-- **Flask 3.0** - Web framework for API and frontend serving
-- **XGBoost 2.0** - Gradient boosting classifier
-- **scikit-learn 1.3** - ML utilities and metrics
-- **pandas 2.1** - Data manipulation
-- **yfinance 0.2** - Stock data download
-- **ta 0.11** - Technical analysis indicators
-- **matplotlib/seaborn** - Visualization
-
-### Frontend
-- **HTML5** - Structure
-- **Tailwind CSS** - Styling
-- **Vanilla JavaScript** - Interactivity
-- **Lucide Icons** - UI icons
-- **Fetch API** - Backend communication
-
-### ML Pipeline
-- **Feature Engineering** - 150+ technical indicators
-- **Time-Series CV** - Proper validation
-- **Data Cleaning** - Handles inf, NaN, outliers
-- **Model Caching** - Performance optimization
+##  5. Backend Stack  
+- Python 3.9  
+- Flask 3.0  
+- XGBoost 2.0  
+- scikit-learn 1.3  
+- pandas 2.1  
+- yfinance 0.2  
+- TA-Lib (technical indicators)  
+- matplotlib / seaborn  
 
 ---
 
-## 📦 Installation
-
-### Prerequisites
-- Python 3.9 or higher
-- pip (Python package manager)
-- Internet connection (for data download)
-
-### Step 1: Clone Repository
-```bash
-git clone <repository-url>
-cd market-classifier
-```
-
-### Step 2: Create Virtual Environment (Recommended)
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### Step 3: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### Step 4: Verify Installation
-```bash
-python3 -c "import xgboost, flask, yfinance; print('✓ All dependencies installed')"
-```
+##  6. Frontend Stack  
+- HTML5  
+- Tailwind CSS  
+- JavaScript  
+- Fetch API  
 
 ---
 
@@ -236,95 +181,28 @@ docker run -p 8080:8080 market-classifier-frontend
 
 ---
 
-### Option 2: Standalone ML Pipeline (CLI)
+##  8. Installation
 
-#### Run Single Category
-```bash
-# Clean Energy (SDG #7)
-python3 main.py --category SDG_CLEAN_ENERGY
+### **Prerequisites**
+- Python 3.9 -- 3.11  
+- pip  
 
-# Technology Stocks
-python3 main.py --category TECH
-
-# Healthcare (SDG #3)
-python3 main.py --category SDG_HEALTH
+### **Step 1 — Create Virtual Environment**
+```
+python -m venv venv
+venv\Scripts\activate
 ```
 
-#### Run Custom Tickers
-```bash
-# Any stocks
-python3 main.py --custom AAPL MSFT GOOGL NVDA
-
-# Indian stocks
-python3 main.py --custom RELIANCE.NS TCS.NS INFY.NS
-
-# Crypto-related
-python3 main.py --custom COIN MSTR RIOT
+### **Step 2 — Install Dependencies**
 ```
-
-#### Run Multi-Category Analysis
-```bash
-python3 main.py --multi
-```
-
-#### List All Categories
-```bash
-python3 main.py --list
-```
-
-**Output:**
-- Trained model: `models/<category>_xgboost_model.json`
-- Dataset: `data/<category>_data.csv`
-- Visualizations: `results/<category>_*.png`
-- Metrics: `results/<category>_metrics.txt`
-
----
-
-### Option 3: API Only (Headless)
-
-Start only the backend:
-```bash
-python3 server.py
-```
-
-Make API requests:
-```bash
-# Predict
-curl -X POST http://localhost:5000/api/predict \
-  -H "Content-Type: application/json" \
-  -d '{"tickers": "AAPL, TSLA"}'
-
-# Get visualizations
-curl -X POST http://localhost:5000/api/visualizations \
-  -H "Content-Type: application/json" \
-  -d '{"tickers": "AAPL, TSLA"}'
-
-# Health check
-curl http://localhost:5000/api/health
+pip install -r requirements.txt
 ```
 
 ---
 
-## 📡 API Documentation
+##  9. How to Use
 
-### Base URL
-```
-http://localhost:5000/api
-```
-
-### Endpoints
-
-#### 1. Predict Stock Movements
-```http
-POST /api/predict
-```
-
-**Request Body:**
-```json
-{
-  "tickers": "AAPL, TSLA, GOOGL"
-}
-```
+### **Option 1: Full Stack Mode (Recommended)**
 
 **Response:**
 ```json
@@ -359,72 +237,34 @@ POST /api/predict
 ```http
 POST /api/visualizations
 ```
+python server.py
+```
+Runs at: **http://localhost:5000**
 
-**Request Body:**
-```json
+### **Terminal 2 — Start Frontend**
+```
+python app.py
+```
+### **Terminal 3 — Starts Model **
+```
+python main.py 
+Runs at: **http://localhost:8080**
+```
+---
+
+##  10. Model Configuration (XGBoost)
+
+```
 {
-  "tickers": "AAPL, TSLA"
-}
-```
-
-**Response:**
-```json
-{
-  "confusionMatrix": "data:image/png;base64,...",
-  "rocCurve": "data:image/png;base64,...",
-  "featureImportance": "data:image/png;base64,...",
-  "priceHistory": "data:image/png;base64,...",
-  "returnsDistribution": "data:image/png;base64,...",
-  "metrics": {
-    "train_accuracy": 0.9635,
-    "test_accuracy": 0.6234,
-    "test_f1": 0.6087,
-    "test_roc_auc": 0.6891
-  }
-}
-```
-
-#### 3. List Categories
-```http
-GET /api/categories
-```
-
-**Response:**
-```json
-{
-  "categories": [
-    {
-      "name": "SDG_CLEAN_ENERGY",
-      "tickers": ["ICLN", "TAN", "ENPH", "FSLR"],
-      "description": "Sdg Clean Energy"
-    }
-  ]
-}
-```
-
-#### 4. Health Check
-```http
-GET /api/health
-```
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-11-24T08:23:19.123456",
-  "cached_models": 3
-}
-```
-
-#### 5. Clear Cache
-```http
-POST /api/clear-cache
-```
-
-**Response:**
-```json
-{
-  "status": "cache cleared"
+  "max_depth": 5,
+  "learning_rate": 0.1,
+  "n_estimators": 150,
+  "objective": "binary:logistic",
+  "subsample": 0.8,
+  "colsample_bytree": 0.8,
+  "gamma": 0.1,
+  "reg_alpha": 0.1,
+  "reg_lambda": 1.0
 }
 ```
 
@@ -532,9 +372,7 @@ df = df[:-1]  # Remove last row (no future data)
 
 ---
 
-## 📊 Results & Performance
-
-### Expected Performance
+##  13. Troubleshooting  
 
 | Metric | Value | Interpretation |
 |--------|-------|----------------|
@@ -554,93 +392,27 @@ df = df[:-1]  # Remove last row (no future data)
 
 ### Sample Output
 ```
-======================================================================
-MODEL PERFORMANCE - Technology
-======================================================================
-Training Accuracy:   0.9635
-Test Accuracy:       0.5783
-Test F1-Score:       0.6087
-Test ROC-AUC:        0.6234
-
-Confusion Matrix:
-[[22 17]
- [18 26]]
-
-Top Features:
-1. AAPL_return_5d       0.065
-2. NVDA_rsi_14          0.051
-3. MSFT_sma_20          0.048
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. "Input contains infinity" Error
-**Problem:** Some stocks have extreme values causing inf in features
-
-**Solution:** Fixed in latest version with data cleaning
-```python
-# Already implemented in model_training.py
 X = X.replace([np.inf, -np.inf], np.nan)
-X = X.fillna(method='ffill').fillna(method='bfill').fillna(0)
+X = X.ffill().bfill().fillna(0)
 ```
 
-#### 2. "Failed to download data"
-**Problem:** yfinance API issues or network problems
-
-**Solution:**
-```bash
-# Check internet connection
-ping yahoo.com
-
-# Try different period
-python3 main.py --custom AAPL  # Uses 2y by default
-
-# Clear cache and retry
-curl -X POST http://localhost:5000/api/clear-cache
+### 2. **"Failed to download data"**
+- Check internet  
+- Retry with:
+```
+python main.py --custom AAPL
 ```
 
-#### 3. "Port already in use"
-**Problem:** Server already running on port
-
-**Solution:**
-```bash
-# Find process
-lsof -i :5000  # or :8080
-
-# Kill process
+### 3. **Port Already in Use**
+```
+lsof -i :5000
 kill -9 <PID>
-
-# Or use different port
-# In server.py: app.run(port=5001)
-# In app.py: app.run(port=8081)
 ```
 
-#### 4. Frontend not connecting to backend
-**Problem:** CORS or wrong API URL
-
-**Solution:**
-```javascript
-// In index.html, verify:
-const API_BASE = 'http://localhost:5000/api';
-
-// Check server.py has:
-CORS(app)
+### 4. **Frontend Not Connecting**
+Check API URL in index.html:
 ```
-
-#### 5. Model training too slow
-**Problem:** Large dataset or weak hardware
-
-**Solution:**
-```python
-# Reduce data period in main.py or server.py:
-raw_data = loader.download_data(period='1y')  # Instead of 2y
-
-# Use fewer features:
-selector = SelectKBest(f_classif, k=30)  # Top 30 features
+const API_BASE = "http://localhost:5000/api";
 ```
 
 ---
@@ -742,69 +514,28 @@ SOFTWARE.
 
 ---
 
-## 📞 Contact & Support
-
-**Issues:** Open an issue on GitHub
-
-**Email:** [your-email@example.com]
-
-**Documentation:** See inline code comments and docstrings
-
-**Updates:** Check GitHub for latest releases
+##  14. Contributors  
+- **Meet Ratwani**  
+- **Jaimin Pansal**  
+Airport School, Ahmedabad (Gujarat)
 
 ---
 
-## 🎯 Quick Start Checklist
-
-- [ ] Install Python 3.9+
-- [ ] Clone repository
-- [ ] Create virtual environment
-- [ ] Install dependencies (`pip install -r requirements.txt`)
-- [ ] Start backend (`python3 server.py`)
-- [ ] Start frontend (`python3 app.py`)
-- [ ] Open browser to `http://localhost:8080`
-- [ ] Search for stocks (e.g., "AAPL, TSLA, GOOGL")
-- [ ] View predictions and visualizations
-
-**That's it! You're ready to predict market movements.** 🚀📈
+##  15. Acknowledgments  
+- XGBoost Team  
+- Yahoo Finance  
+- scikit-learn Community  
+- Flask Team  
+- Tailwind CSS  
+- YouTube Creators  
+- Jupyter Notebooks (free GPUs)
+- AI Models For Explaining us Market core concepts and Movements .
+- AI Model (Copilot ) to tell what things are to be added in Readme for a hackathon   
 
 ---
 
-**⭐ If you find this project useful, please star it on GitHub!**
+## 16. Links  
+**GitHub Repository:**  
+https://github.com/jai-git4208/market-classifier  
 
-**Built with ❤️ by Meet and Jaimin**
-```
-
-```file: app.py
-from flask import Flask, send_from_directory
-import os
-
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    """Serve the main index.html"""
-    return send_from_directory('.', 'index.html')
-
-@app.route('/<path:path>')
-def serve_static(path):
-    """Serve any static files"""
-    return send_from_directory('.', path)
-
-if __name__ == '__main__':
-    print("="*70)
-    print("MARKET MOVEMENT CLASSIFIER - FRONTEND SERVER")
-    print("="*70)
-    print("Frontend running on: http://localhost:8080")
-    print("Make sure backend API is running on: http://localhost:5000")
-    print("="*70 + "\n")
-    
-    # Try to open browser automatically
-    import webbrowser
-    try:
-        webbrowser.open('http://localhost:8080')
-    except:
-        pass
-    
-    app.run(debug=True, host='0.0.0.0', port=8080)
-```
+Built with ❤️ by **Meet Ratwani  & Jaimin Pansal**  
