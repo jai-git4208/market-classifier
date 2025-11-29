@@ -113,7 +113,7 @@ market-classifier/
 ##  8. Installation
 
 ### **Prerequisites**
-- Python 3.9  
+- Python 3.9 -- 3.11  
 - pip  
 
 ### **Step 1 — Create Virtual Environment**
@@ -143,8 +143,11 @@ Runs at: **http://localhost:5000**
 ```
 python app.py
 ```
+### **Terminal 3 — Starts Model **
+```
+python main.py 
 Runs at: **http://localhost:8080**
-
+```
 ---
 
 ##  10. Model Configuration (XGBoost)
