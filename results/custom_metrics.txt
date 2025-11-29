@@ -1,0 +1,31 @@
+MARKET MOVEMENT CLASSIFIER - Custom Selection
+======================================================================
+
+Category: CUSTOM
+Tickers: RELIANCE.NS
+SDG Aligned: No
+
+Training Accuracy:   1.0000
+Test Accuracy:       0.5463
+Test F1-Score:       0.5690
+Test ROC-AUC:        0.5776
+
+Confusion Matrix:
+[[56 55]
+ [48 68]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.54      0.50      0.52       111
+           1       0.55      0.59      0.57       116
+
+    accuracy                           0.55       227
+   macro avg       0.55      0.55      0.54       227
+weighted avg       0.55      0.55      0.55       227
+
+
+Next Day Prediction:
+Ticker: RELIANCE.NS
+Movement: DOWN
+Confidence: 90.98%

@@ -1,0 +1,12 @@
+.git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+venv/
+results/
+models/
+.pytest_cache/
+.ipynb_checkpoints/
+

@@ -2,30 +2,30 @@ MARKET MOVEMENT CLASSIFIER - Clean Energy (SDG #7)
 ======================================================================
 
 Category: SDG_CLEAN_ENERGY
-Tickers: ICLN, TAN, ENPH, FSLR
+Tickers: ICLN, TAN, ENPH, FSLR, RUN, SEDG
 SDG Aligned: Yes
 
 Training Accuracy:   1.0000
-Test Accuracy:       0.6277
-Test F1-Score:       0.6392
-Test ROC-AUC:        0.6557
+Test Accuracy:       0.4625
+Test F1-Score:       0.4557
+Test ROC-AUC:        0.5377
 
 Confusion Matrix:
-[[28 14]
- [21 31]]
+[[19 14]
+ [29 18]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.57      0.67      0.62        42
-           1       0.69      0.60      0.64        52
+           0       0.40      0.58      0.47        33
+           1       0.56      0.38      0.46        47
 
-    accuracy                           0.63        94
-   macro avg       0.63      0.63      0.63        94
-weighted avg       0.64      0.63      0.63        94
+    accuracy                           0.46        80
+   macro avg       0.48      0.48      0.46        80
+weighted avg       0.49      0.46      0.46        80
 
 
 Next Day Prediction:
 Ticker: ICLN
-Movement: DOWN
-Confidence: 76.89%
+Movement: UP
+Confidence: 67.64%
